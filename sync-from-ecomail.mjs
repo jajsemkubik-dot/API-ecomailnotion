@@ -117,10 +117,15 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
     };
   }
 
-  // Update tags from Ecomail if they exist
-  if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
+  // Update tags from Ecomail (including empty arrays to clear tags)
+  if (Array.isArray(ecomailSubscriber.tags)) {
     updates.Tags = {
       multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
+    };
+  } else if (ecomailSubscriber.tags === null || ecomailSubscriber.tags === undefined) {
+    // If tags property doesn't exist, set to empty array
+    updates.Tags = {
+      multi_select: []
     };
   }
 
