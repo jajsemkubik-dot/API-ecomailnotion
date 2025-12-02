@@ -69,11 +69,9 @@ async function fetchEcomailSubscriber(email) {
 
   if (response.ok) {
     const data = await response.json();
-    console.log(`🔍 Ecomail API raw response for ${email}:`, JSON.stringify(data, null, 2));
     return data;
   }
 
-  console.log(`⚠️  Ecomail subscriber not found or error for ${email}: ${response.status}`);
   // Subscriber doesn't exist or error - return null
   return null;
 }
@@ -136,9 +134,6 @@ async function addToEcomail(contact) {
     payload.tags = contact.tags;
   }
 
-  console.log(`🔍 Request URL: ${url}`);
-  console.log(`🔍 Payload:`, JSON.stringify(payload, null, 2));
-
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -147,8 +142,6 @@ async function addToEcomail(contact) {
     },
     body: JSON.stringify(payload)
   });
-
-  console.log(`🔍 Response status: ${response.status} ${response.statusText}`);
 
   return response;
 }
@@ -163,9 +156,6 @@ async function unsubscribeFromEcomail(email) {
     email: email
   };
 
-  console.log(`🔍 Unsubscribe URL: ${url}`);
-  console.log(`🔍 Payload:`, JSON.stringify(payload, null, 2));
-
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -174,8 +164,6 @@ async function unsubscribeFromEcomail(email) {
     },
     body: JSON.stringify(payload)
   });
-
-  console.log(`🔍 Response status: ${response.status} ${response.statusText}`);
 
   return response;
 }
@@ -232,65 +220,44 @@ async function main() {
       }
 
       try {
-        console.log(`📧 Processing: ${contact.email}`, JSON.stringify(contact, null, 2));
-
         // Check if subscriber exists in Ecomail
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
-
-        console.log(`🔍 Comparison for ${contact.email}:`);
-        console.log(`   Notion Subscribe: ${contact.subscribe}`);
-        console.log(`   Notion tags: ${JSON.stringify(contact.tags)}`);
-        console.log(`   Ecomail subscriber data:`, JSON.stringify(ecomailSubscriber, null, 2));
+        const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
 
         // Handle subscription status based on Notion
         if (contact.subscribe) {
-          // Contact should be subscribed in Ecomail
-          const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
-          console.log(`   Ecomail status: ${ecomailStatus}`);
-          console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
-
+          // Contact should be subscribed in Ecomail (Přihlášen)
           if (ecomailStatus === 'SUBSCRIBED' && !needsEcomailUpdate(contact, ecomailSubscriber)) {
-            console.log(`⏭️  No changes needed: ${contact.email}`);
+            console.log(`⏭️  No changes: ${contact.email}`);
             skippedCount++;
             continue;
           }
 
-          console.log(`🚀 Sending subscribe/update to Ecomail for ${contact.email}`);
           const response = await addToEcomail(contact);
 
           if (response.ok) {
-            const responseBody = await response.text();
-            console.log(`✅ Synced: ${contact.email}`);
-            console.log(`   Response body: ${responseBody}`);
+            console.log(`✅ Subscribed: ${contact.email}`);
             successCount++;
           } else {
             const errorText = await response.text();
-            console.error(`❌ Failed: ${contact.email} - ${response.status} ${response.statusText}`);
-            console.error(`   Response: ${errorText}`);
+            console.error(`❌ Failed to subscribe ${contact.email}: ${response.status} - ${errorText}`);
             errorCount++;
           }
         } else {
-          // Contact should be unsubscribed in Ecomail
-          const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
-          console.log(`   Ecomail status: ${ecomailStatus}`);
-
+          // Contact should be unsubscribed in Ecomail (Odhlášen)
           if (ecomailStatus === 'UNSUBSCRIBED' || ecomailStatus === 'NOT_FOUND') {
-            console.log(`⏭️  Already unsubscribed or not in list: ${contact.email}`);
+            console.log(`⏭️  Already unsubscribed: ${contact.email}`);
             skippedCount++;
           } else {
-            // Status is SUBSCRIBED or something else - need to unsubscribe
-            console.log(`🚫 Unsubscribing ${contact.email} from Ecomail`);
+            // Status is SUBSCRIBED - need to unsubscribe
             const response = await unsubscribeFromEcomail(contact.email);
 
             if (response.ok) {
-              const responseBody = await response.text();
               console.log(`✅ Unsubscribed: ${contact.email}`);
-              console.log(`   Response body: ${responseBody}`);
               unsubscribedCount++;
             } else {
               const errorText = await response.text();
-              console.error(`❌ Failed to unsubscribe: ${contact.email} - ${response.status} ${response.statusText}`);
-              console.error(`   Response: ${errorText}`);
+              console.error(`❌ Failed to unsubscribe ${contact.email}: ${response.status} - ${errorText}`);
               errorCount++;
             }
           }
