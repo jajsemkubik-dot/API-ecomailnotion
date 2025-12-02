@@ -126,7 +126,8 @@ async function addToEcomail(contact) {
   const payload = {
     subscriber_data,
     update_existing: true,
-    trigger_autoresponders: true
+    trigger_autoresponders: true,
+    skip_confirmation: true
   };
 
   // Add tags if they exist (tags must be sent separately according to Ecomail API)
