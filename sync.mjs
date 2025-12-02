@@ -10,23 +10,28 @@ const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 const notion = new Client({ auth: NOTION_TOKEN });
 
 /**
- * Query Notion database for contacts with Subscribe = true
+ * Query Notion database for ALL contacts
  */
 async function queryNotionDatabase() {
-  console.log('📖 Querying Notion database...');
+  console.log('📖 Querying Notion database for all contacts...');
 
-  const response = await notion.databases.query({
-    database_id: NOTION_DATABASE_ID,
-    filter: {
-      property: 'Subscribe',
-      checkbox: {
-        equals: true
-      }
-    }
-  });
+  const pages = [];
+  let hasMore = true;
+  let startCursor = undefined;
 
-  console.log(`✅ Found ${response.results.length} subscribed contacts`);
-  return response.results;
+  while (hasMore) {
+    const response = await notion.databases.query({
+      database_id: NOTION_DATABASE_ID,
+      start_cursor: startCursor
+    });
+
+    pages.push(...response.results);
+    hasMore = response.has_more;
+    startCursor = response.next_cursor;
+  }
+
+  console.log(`✅ Found ${pages.length} total contacts`);
+  return pages;
 }
 
 /**
@@ -43,7 +48,8 @@ function extractContactData(page) {
     name: properties.Jméno?.rich_text?.[0]?.plain_text || null,
     surname: properties.Příjmení?.rich_text?.[0]?.plain_text || null,
     company: properties.Firma?.rich_text?.[0]?.plain_text || null,
-    tags: tags.length > 0 ? tags : null
+    tags: tags.length > 0 ? tags : null,
+    subscribe: properties.Subscribe?.checkbox || false
   };
 }
 
@@ -148,6 +154,33 @@ async function addToEcomail(contact) {
 }
 
 /**
+ * Unsubscribe contact from Ecomail list
+ */
+async function unsubscribeFromEcomail(email) {
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe`;
+
+  const payload = {
+    email: email
+  };
+
+  console.log(`🔍 Unsubscribe URL: ${url}`);
+  console.log(`🔍 Payload:`, JSON.stringify(payload, null, 2));
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'key': ECOMAIL_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  console.log(`🔍 Response status: ${response.status} ${response.statusText}`);
+
+  return response;
+}
+
+/**
  * Main sync function
  */
 async function main() {
@@ -172,11 +205,11 @@ async function main() {
   }
 
   try {
-    // Query Notion for subscribed contacts
+    // Query Notion for all contacts
     const pages = await queryNotionDatabase();
 
     if (pages.length === 0) {
-      console.log('ℹ️  No subscribed contacts found');
+      console.log('ℹ️  No contacts found');
       return;
     }
 
@@ -185,6 +218,7 @@ async function main() {
     let successCount = 0;
     let errorCount = 0;
     let skippedCount = 0;
+    let unsubscribedCount = 0;
 
     // Process each contact
     for (const page of pages) {
@@ -200,33 +234,60 @@ async function main() {
       try {
         console.log(`📧 Processing: ${contact.email}`, JSON.stringify(contact, null, 2));
 
-        // Check if subscriber exists in Ecomail and if update is needed
+        // Check if subscriber exists in Ecomail
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
 
         console.log(`🔍 Comparison for ${contact.email}:`);
+        console.log(`   Notion Subscribe: ${contact.subscribe}`);
         console.log(`   Notion tags: ${JSON.stringify(contact.tags)}`);
         console.log(`   Ecomail subscriber data:`, JSON.stringify(ecomailSubscriber, null, 2));
-        console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
 
-        if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
-          console.log(`⏭️  No changes needed: ${contact.email}`);
-          skippedCount++;
-          continue;
-        }
+        // Handle subscription status
+        if (contact.subscribe) {
+          // Contact should be subscribed
+          console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
 
-        console.log(`🚀 Sending update to Ecomail for ${contact.email}`);
-        const response = await addToEcomail(contact);
+          if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
+            console.log(`⏭️  No changes needed: ${contact.email}`);
+            skippedCount++;
+            continue;
+          }
 
-        if (response.ok) {
-          const responseBody = await response.text();
-          console.log(`✅ Synced: ${contact.email}`);
-          console.log(`   Response body: ${responseBody}`);
-          successCount++;
+          console.log(`🚀 Sending subscribe/update to Ecomail for ${contact.email}`);
+          const response = await addToEcomail(contact);
+
+          if (response.ok) {
+            const responseBody = await response.text();
+            console.log(`✅ Synced: ${contact.email}`);
+            console.log(`   Response body: ${responseBody}`);
+            successCount++;
+          } else {
+            const errorText = await response.text();
+            console.error(`❌ Failed: ${contact.email} - ${response.status} ${response.statusText}`);
+            console.error(`   Response: ${errorText}`);
+            errorCount++;
+          }
         } else {
-          const errorText = await response.text();
-          console.error(`❌ Failed: ${contact.email} - ${response.status} ${response.statusText}`);
-          console.error(`   Response: ${errorText}`);
-          errorCount++;
+          // Contact should be unsubscribed
+          if (ecomailSubscriber && ecomailSubscriber.status === 'SUBSCRIBED') {
+            console.log(`🚫 Unsubscribing ${contact.email} from Ecomail`);
+            const response = await unsubscribeFromEcomail(contact.email);
+
+            if (response.ok) {
+              const responseBody = await response.text();
+              console.log(`✅ Unsubscribed: ${contact.email}`);
+              console.log(`   Response body: ${responseBody}`);
+              unsubscribedCount++;
+            } else {
+              const errorText = await response.text();
+              console.error(`❌ Failed to unsubscribe: ${contact.email} - ${response.status} ${response.statusText}`);
+              console.error(`   Response: ${errorText}`);
+              errorCount++;
+            }
+          } else {
+            console.log(`⏭️  Already unsubscribed or not in list: ${contact.email}`);
+            skippedCount++;
+          }
         }
       } catch (error) {
         console.error(`❌ Error syncing ${contact.email}:`, error.message);
@@ -238,7 +299,8 @@ async function main() {
     console.log('\n' + '='.repeat(50));
     console.log('📊 Sync Summary:');
     console.log(`   Total contacts: ${pages.length}`);
-    console.log(`   ✅ Successful: ${successCount}`);
+    console.log(`   ✅ Subscribed/Updated: ${successCount}`);
+    console.log(`   🚫 Unsubscribed: ${unsubscribedCount}`);
     console.log(`   ⏭️  Skipped (no changes): ${skippedCount}`);
     console.log(`   ❌ Failed: ${errorCount}`);
     console.log('='.repeat(50));
