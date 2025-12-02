@@ -10,22 +10,16 @@ const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 const notion = new Client({ auth: NOTION_TOKEN });
 
 /**
- * Query Notion database for all contacts with Subscribed = true
+ * Query Notion database for all contacts
  */
 async function queryNotionDatabase() {
   console.log('📖 Querying Notion database...');
 
   const response = await notion.databases.query({
-    database_id: NOTION_DATABASE_ID,
-    filter: {
-      property: 'Subscribed',
-      checkbox: {
-        equals: true
-      }
-    }
+    database_id: NOTION_DATABASE_ID
   });
 
-  console.log(`✅ Found ${response.results.length} subscribed contacts`);
+  console.log(`✅ Found ${response.results.length} contacts`);
   return response.results;
 }
 
