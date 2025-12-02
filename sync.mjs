@@ -62,9 +62,12 @@ async function fetchEcomailSubscriber(email) {
   });
 
   if (response.ok) {
-    return await response.json();
+    const data = await response.json();
+    console.log(`🔍 Ecomail API raw response for ${email}:`, JSON.stringify(data, null, 2));
+    return data;
   }
 
+  console.log(`⚠️  Ecomail subscriber not found or error for ${email}: ${response.status}`);
   // Subscriber doesn't exist or error - return null
   return null;
 }
