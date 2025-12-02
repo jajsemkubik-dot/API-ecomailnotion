@@ -110,16 +110,16 @@ function findNotionPageByEmail(notionPages, email) {
 async function updateNotionPage(pageId, ecomailSubscriber) {
   const updates = {};
 
-  // Update Subcribe status based on Ecomail status
+  // Update Subscribe status based on Ecomail status
   if (ecomailSubscriber.status) {
-    updates.Subcribe = {
+    updates.Subscribe = {
       checkbox: ecomailSubscriber.status === 'SUBSCRIBED'
     };
   }
 
   // Update tags from Ecomail if they exist
   if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
-    updates.Tag = {
+    updates.Tags = {
       multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
     };
   }
@@ -145,7 +145,7 @@ function needsUpdate(notionPage, ecomailSubscriber) {
   const props = notionPage.properties;
 
   // Check subscription status
-  const notionSubscribed = props.Subcribe?.checkbox || false;
+  const notionSubscribed = props.Subscribe?.checkbox || false;
   const ecomailSubscribed = ecomailSubscriber.status === 'SUBSCRIBED';
 
   if (notionSubscribed !== ecomailSubscribed) {
@@ -153,7 +153,7 @@ function needsUpdate(notionPage, ecomailSubscriber) {
   }
 
   // Check tags
-  const notionTags = props.Tag?.multi_select?.map(tag => tag.name).sort() || [];
+  const notionTags = props.Tags?.multi_select?.map(tag => tag.name).sort() || [];
   const ecomailTags = (ecomailSubscriber.tags || []).sort();
 
   // Compare tag arrays

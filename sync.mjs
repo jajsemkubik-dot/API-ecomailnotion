@@ -10,7 +10,7 @@ const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 const notion = new Client({ auth: NOTION_TOKEN });
 
 /**
- * Query Notion database for contacts with Subcribe = true
+ * Query Notion database for contacts with Subscribe = true
  */
 async function queryNotionDatabase() {
   console.log('📖 Querying Notion database...');
@@ -18,7 +18,7 @@ async function queryNotionDatabase() {
   const response = await notion.databases.query({
     database_id: NOTION_DATABASE_ID,
     filter: {
-      property: 'Subcribe',
+      property: 'Subscribe',
       checkbox: {
         equals: true
       }
@@ -36,7 +36,7 @@ function extractContactData(page) {
   const properties = page.properties;
 
   // Extract tags from multiselect property
-  const tags = properties.Tag?.multi_select?.map(tag => tag.name) || [];
+  const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
   return {
     email: properties.Email?.email || null,
