@@ -43,7 +43,7 @@ function extractContactData(page) {
     name: properties.Jméno?.rich_text?.[0]?.plain_text || null,
     surname: properties.Příjmení?.rich_text?.[0]?.plain_text || null,
     company: properties.Firma?.rich_text?.[0]?.plain_text || null,
-    tags: tags.length > 0 ? tags : null
+    tags: tags  // Always return array (empty or with values)
   };
 }
 
