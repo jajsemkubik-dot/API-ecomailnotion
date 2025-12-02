@@ -110,12 +110,8 @@ function findNotionPageByEmail(notionPages, email) {
 async function updateNotionPage(pageId, ecomailSubscriber) {
   const updates = {};
 
-  // Update Subscribe status based on Ecomail status
-  if (ecomailSubscriber.status) {
-    updates.Subscribe = {
-      checkbox: ecomailSubscriber.status === 'SUBSCRIBED'
-    };
-  }
+  // DO NOT update Subscribe status - Notion is the source of truth for subscription intent
+  // Only sync tags from Ecomail
 
   // Update tags from Ecomail if they exist
   if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
@@ -124,7 +120,7 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
     };
   }
 
-  // DO NOT update name/surname/company - Notion is the source of truth
+  // DO NOT update name/surname/company/subscribe - Notion is the source of truth
 
   if (Object.keys(updates).length > 0) {
     await notion.pages.update({
@@ -139,20 +135,14 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
 
 /**
  * Compare and determine if update is needed
- * Check subscription status and tags for changes
+ * Check only tags for changes (Notion is source of truth for subscription)
  */
 function needsUpdate(notionPage, ecomailSubscriber) {
   const props = notionPage.properties;
 
-  // Check subscription status
-  const notionSubscribed = props.Subscribe?.checkbox || false;
-  const ecomailSubscribed = ecomailSubscriber.status === 'SUBSCRIBED';
+  // DO NOT check subscription status - Notion is the source of truth
 
-  if (notionSubscribed !== ecomailSubscribed) {
-    return true;
-  }
-
-  // Check tags
+  // Check tags only
   const notionTags = props.Tags?.multi_select?.map(tag => tag.name).sort() || [];
   const ecomailTags = (ecomailSubscriber.tags || []).sort();
 
