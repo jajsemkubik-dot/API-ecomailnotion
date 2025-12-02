@@ -48,6 +48,59 @@ function extractContactData(page) {
 }
 
 /**
+ * Fetch existing subscriber from Ecomail to check for changes
+ */
+async function fetchEcomailSubscriber(email) {
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscriber/${encodeURIComponent(email)}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'key': ECOMAIL_API_KEY,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  if (response.ok) {
+    return await response.json();
+  }
+
+  // Subscriber doesn't exist or error - return null
+  return null;
+}
+
+/**
+ * Check if contact needs update in Ecomail
+ */
+function needsEcomailUpdate(notionContact, ecomailSubscriber) {
+  if (!ecomailSubscriber) {
+    // Subscriber doesn't exist in Ecomail, needs to be created
+    return true;
+  }
+
+  // Compare tags
+  const notionTags = (notionContact.tags || []).sort();
+  const ecomailTags = (ecomailSubscriber.tags || []).sort();
+
+  if (notionTags.length !== ecomailTags.length) {
+    return true;
+  }
+
+  for (let i = 0; i < notionTags.length; i++) {
+    if (notionTags[i] !== ecomailTags[i]) {
+      return true;
+    }
+  }
+
+  // Compare other fields
+  if (notionContact.name !== ecomailSubscriber.name) return true;
+  if (notionContact.surname !== ecomailSubscriber.surname) return true;
+  if (notionContact.company !== ecomailSubscriber.company) return true;
+
+  return false;
+}
+
+/**
  * Add or update subscriber in Ecomail list
  */
 async function addToEcomail(contact) {
@@ -128,6 +181,7 @@ async function main() {
 
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
 
     // Process each contact
     for (const page of pages) {
@@ -142,6 +196,16 @@ async function main() {
 
       try {
         console.log(`📧 Processing: ${contact.email}`, JSON.stringify(contact, null, 2));
+
+        // Check if subscriber exists in Ecomail and if update is needed
+        const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
+
+        if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
+          console.log(`⏭️  No changes needed: ${contact.email}`);
+          skippedCount++;
+          continue;
+        }
+
         const response = await addToEcomail(contact);
 
         if (response.ok) {
@@ -166,6 +230,7 @@ async function main() {
     console.log('📊 Sync Summary:');
     console.log(`   Total contacts: ${pages.length}`);
     console.log(`   ✅ Successful: ${successCount}`);
+    console.log(`   ⏭️  Skipped (no changes): ${skippedCount}`);
     console.log(`   ❌ Failed: ${errorCount}`);
     console.log('='.repeat(50));
 

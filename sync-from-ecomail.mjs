@@ -105,20 +105,25 @@ function findNotionPageByEmail(notionPages, email) {
 
 /**
  * Update Notion page with Ecomail data
- * ONLY updates subscription status - Notion is source of truth for everything else
+ * Updates subscription status and tags from Ecomail
  */
 async function updateNotionPage(pageId, ecomailSubscriber) {
   const updates = {};
 
-  // ONLY update Subcribe status based on Ecomail status
-  // Ecomail is the source of truth for subscription status
+  // Update Subcribe status based on Ecomail status
   if (ecomailSubscriber.status) {
     updates.Subcribe = {
       checkbox: ecomailSubscriber.status === 'SUBSCRIBED'
     };
   }
 
-  // DO NOT update tags - Notion is the source of truth for tags
+  // Update tags from Ecomail if they exist
+  if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
+    updates.Tag = {
+      multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
+    };
+  }
+
   // DO NOT update name/surname/company - Notion is the source of truth
 
   if (Object.keys(updates).length > 0) {
@@ -134,17 +139,35 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
 
 /**
  * Compare and determine if update is needed
- * ONLY check subscription status - Notion is source of truth for everything else
+ * Check subscription status and tags for changes
  */
 function needsUpdate(notionPage, ecomailSubscriber) {
   const props = notionPage.properties;
 
-  // ONLY check subscription status
-  // Ecomail is the source of truth for subscription status
+  // Check subscription status
   const notionSubscribed = props.Subcribe?.checkbox || false;
   const ecomailSubscribed = ecomailSubscriber.status === 'SUBSCRIBED';
 
-  return notionSubscribed !== ecomailSubscribed;
+  if (notionSubscribed !== ecomailSubscribed) {
+    return true;
+  }
+
+  // Check tags
+  const notionTags = props.Tag?.multi_select?.map(tag => tag.name).sort() || [];
+  const ecomailTags = (ecomailSubscriber.tags || []).sort();
+
+  // Compare tag arrays
+  if (notionTags.length !== ecomailTags.length) {
+    return true;
+  }
+
+  for (let i = 0; i < notionTags.length; i++) {
+    if (notionTags[i] !== ecomailTags[i]) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
