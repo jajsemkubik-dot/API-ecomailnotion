@@ -10,16 +10,22 @@ const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 const notion = new Client({ auth: NOTION_TOKEN });
 
 /**
- * Query Notion database for all contacts
+ * Query Notion database for contacts with Subcribe = true
  */
 async function queryNotionDatabase() {
   console.log('📖 Querying Notion database...');
 
   const response = await notion.databases.query({
-    database_id: NOTION_DATABASE_ID
+    database_id: NOTION_DATABASE_ID,
+    filter: {
+      property: 'Subcribe',
+      checkbox: {
+        equals: true
+      }
+    }
   });
 
-  console.log(`✅ Found ${response.results.length} contacts`);
+  console.log(`✅ Found ${response.results.length} subscribed contacts`);
   return response.results;
 }
 
@@ -29,11 +35,15 @@ async function queryNotionDatabase() {
 function extractContactData(page) {
   const properties = page.properties;
 
+  // Extract tags from multiselect property
+  const tags = properties.Tag?.multi_select?.map(tag => tag.name) || [];
+
   return {
     email: properties.Email?.email || null,
     name: properties.Jméno?.rich_text?.[0]?.plain_text || null,
     surname: properties.Příjmení?.rich_text?.[0]?.plain_text || null,
-    company: properties.Firma?.rich_text?.[0]?.plain_text || null
+    company: properties.Firma?.rich_text?.[0]?.plain_text || null,
+    tags: tags.length > 0 ? tags : null
   };
 }
 
@@ -41,7 +51,8 @@ function extractContactData(page) {
  * Add or update subscriber in Ecomail list
  */
 async function addToEcomail(contact) {
-  const url = `https://api.ecomail.app/lists/${ECOMAIL_LIST_ID}/subscribe`;
+  // Try both API endpoints (api2.ecomailapp.cz is the official one from PHP library)
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
 
   // Build subscriber_data object, only including non-null values
   const subscriber_data = {
@@ -58,6 +69,14 @@ async function addToEcomail(contact) {
     trigger_autoresponders: true
   };
 
+  // Add tags if they exist (tags must be sent separately according to Ecomail API)
+  if (contact.tags && contact.tags.length > 0) {
+    payload.tags = contact.tags;
+  }
+
+  console.log(`🔍 Request URL: ${url}`);
+  console.log(`🔍 Payload:`, JSON.stringify(payload, null, 2));
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -66,6 +85,8 @@ async function addToEcomail(contact) {
     },
     body: JSON.stringify(payload)
   });
+
+  console.log(`🔍 Response status: ${response.status} ${response.statusText}`);
 
   return response;
 }
