@@ -36,7 +36,7 @@ function extractContactData(page) {
   const properties = page.properties;
 
   // Extract tags from multiselect property
-  const tags = properties.Tag?.multi_select?.map(tag => tag.name) || [];
+  const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
   return {
     email: properties.Email?.email || null,
