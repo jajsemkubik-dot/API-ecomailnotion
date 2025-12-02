@@ -43,13 +43,17 @@ function extractContactData(page) {
 async function addToEcomail(contact) {
   const url = `https://api.ecomail.app/lists/${ECOMAIL_LIST_ID}/subscribe`;
 
+  // Build subscriber_data object, only including non-null values
+  const subscriber_data = {
+    email: contact.email
+  };
+
+  if (contact.name) subscriber_data.name = contact.name;
+  if (contact.surname) subscriber_data.surname = contact.surname;
+  if (contact.company) subscriber_data.company = contact.company;
+
   const payload = {
-    subscriber_data: {
-      email: contact.email,
-      name: contact.name,
-      surname: contact.surname,
-      company: contact.company
-    },
+    subscriber_data,
     update_existing: true,
     trigger_autoresponders: true
   };
@@ -116,6 +120,7 @@ async function main() {
       }
 
       try {
+        console.log(`📧 Processing: ${contact.email}`, JSON.stringify(contact, null, 2));
         const response = await addToEcomail(contact);
 
         if (response.ok) {
