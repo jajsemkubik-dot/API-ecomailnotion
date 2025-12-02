@@ -36,7 +36,7 @@ function extractContactData(page) {
   const properties = page.properties;
 
   // Extract tags from multiselect property
-  const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
+  const tags = properties.Tag?.multi_select?.map(tag => tag.name) || [];
 
   return {
     email: properties.Email?.email || null,
@@ -199,11 +199,6 @@ async function main() {
 
         // Check if subscriber exists in Ecomail and if update is needed
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
-
-        console.log(`🔍 Checking for changes:`);
-        console.log(`   Notion tags: ${JSON.stringify(contact.tags)}`);
-        console.log(`   Ecomail tags: ${JSON.stringify(ecomailSubscriber?.tags || null)}`);
-        console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
 
         if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
           console.log(`⏭️  No changes needed: ${contact.email}`);

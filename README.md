@@ -1,17 +1,28 @@
-# Notion → Ecomail Contact Sync
+# Bi-directional Notion ↔ Ecomail Contact Sync
 
-Automatically sync contacts from Notion database to Ecomail mailing list using GitHub Actions. **Notion is the source of truth** - Ecomail displays what Notion tells it.
+Automatically sync contacts between Notion database and Ecomail mailing list using GitHub Actions with bi-directional synchronization.
 
 ## Features
 
-- **One-way sync**: Notion → Ecomail only
+### Notion → Ecomail Sync
 - Syncs contact data from Notion to Ecomail:
   - Email, name, surname, company
-  - Tags for contact segmentation
-- Filters only contacts with "Subscribe" checkbox checked
+  - **Tags** (bi-directional - checks for changes before updating)
+- Filters only contacts with "Subcribe" checkbox checked
 - Fetches existing Ecomail data to detect changes
 - Only updates when changes are detected (efficient sync)
 - Updates existing subscribers or creates new ones in Ecomail
+
+### Ecomail → Notion Sync
+- Syncs from Ecomail to Notion:
+  - **Subscription status** - Updates "Subcribe" checkbox
+  - **Tags** (bi-directional - checks for changes before updating)
+  - Handles unsubscribes from Ecomail
+- Fetches ALL contacts including unsubscribed ones
+- Only updates when changes are detected (efficient sync)
+- **Does NOT sync** name, surname, or company (Notion remains authoritative for these fields)
+
+### General
 - Runs automatically every 15 minutes via GitHub Actions
 - Can be triggered manually from GitHub Actions interface
 - Comprehensive error handling and logging
@@ -33,8 +44,7 @@ Your Notion database should have these properties:
 - **Jméno** (Text type) - First name
 - **Příjmení** (Text type) - Surname/Last name
 - **Firma** (Text type) - Company name
-- **Subscribe** (Checkbox type) - Subscription status
-- **Tags** (Multi-select type) - Contact tags for segmentation
+- **Subscribed** (Checkbox type) - Subscription status
 
 ## Setup
 
@@ -117,15 +127,12 @@ npm run sync
 
 ## How It Works
 
-1. **Query Notion**: Fetches all contacts from the Notion database where `Subscribe` checkbox is `true`
-2. **Extract Data**: Extracts email, name, surname, company, and tags from each contact
-3. **Check for Changes**: Fetches existing subscriber from Ecomail and compares data
-4. **Sync to Ecomail**: Sends updated contact data to Ecomail API only if changes detected
-   - If contact exists: Updates their information (including tags)
+1. **Query Notion**: Fetches all contacts from the Notion database where `Subscribed` checkbox is `true`
+2. **Extract Data**: Extracts email, name, surname, and company from each contact
+3. **Sync to Ecomail**: Sends each contact to Ecomail API
+   - If contact exists: Updates their information
    - If contact is new: Adds them to the list
-5. **Logging**: Outputs detailed logs of success/failure/skipped for each contact
-
-**Note**: This is a one-way sync. Changes made in Ecomail (like unsubscribes or tag changes) will be overwritten by Notion data on the next sync.
+4. **Logging**: Outputs detailed logs of success/failure for each contact
 
 ## Troubleshooting
 
@@ -144,18 +151,9 @@ npm run sync
 
 ### Contacts not syncing?
 
-- Verify the "Subscribe" checkbox is checked for contacts you want to sync
+- Verify the "Subscribed" checkbox is checked for contacts you want to sync
 - Ensure the Email property is not empty
-- Check that property names match exactly (case-sensitive):
-  - Subscribe (not Subscribed or Subcribe)
-  - Tags (not Tag)
-- Ensure tags exist in Ecomail before syncing (create them in Ecomail UI first)
-
-### Tags not appearing in Ecomail?
-
-- Tags must be created in Ecomail UI before they can be assigned via API
-- Go to Ecomail → Lists → Your List → Tags and create the tags first
-- Then run the sync again
+- Check that property names match exactly (case-sensitive)
 
 ## Customization
 
