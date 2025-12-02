@@ -27,7 +27,7 @@ jobs:
       - name: Run sync script
         run: npm run sync
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
-          ECOMAIL_API_KEY: ${{ secrets.ECOMAIL_API_KEY }}
-          ECOMAIL_LIST_ID: ${{ secrets.ECOMAIL_LIST_ID }}
+          NOTION_TOKEN: ${{ vars.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
+          ECOMAIL_API_KEY: ${{ vars.ECOMAIL_API_KEY }}
+          ECOMAIL_LIST_ID: ${{ vars.ECOMAIL_LIST_ID }}

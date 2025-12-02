@@ -1,12 +1,13 @@
 import { Client } from '@notionhq/client';
 
-// Initialize Notion client
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
-
 // Configuration from environment variables
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const ECOMAIL_API_KEY = process.env.ECOMAIL_API_KEY;
 const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
+
+// Initialize Notion client
+const notion = new Client({ auth: NOTION_TOKEN });
 
 /**
  * Query Notion database for all contacts with Subscribed = true
