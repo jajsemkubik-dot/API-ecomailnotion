@@ -1,4 +1,4 @@
-name: Notion to Ecomail Sync
+name: Bi-directional Notion ↔ Ecomail Sync
 
 on:
   # Run every 15 minutes
@@ -24,8 +24,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run sync script
+      - name: Sync Notion → Ecomail
         run: npm run sync
+        env:
+          NOTION_TOKEN: ${{ vars.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}
+          ECOMAIL_API_KEY: ${{ vars.ECOMAIL_API_KEY }}
+          ECOMAIL_LIST_ID: ${{ vars.ECOMAIL_LIST_ID }}
+
+      - name: Sync Ecomail → Notion
+        run: npm run sync:from-ecomail
         env:
           NOTION_TOKEN: ${{ vars.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ vars.NOTION_DATABASE_ID }}

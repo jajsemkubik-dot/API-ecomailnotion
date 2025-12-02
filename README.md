@@ -1,15 +1,26 @@
-# Notion to Ecomail Contact Sync
+# Bi-directional Notion ↔ Ecomail Contact Sync
 
-Automatically sync contacts from a Notion database to an Ecomail mailing list using GitHub Actions.
+Automatically sync contacts between Notion database and Ecomail mailing list using GitHub Actions with bi-directional synchronization.
 
 ## Features
 
+### Notion → Ecomail Sync
 - Syncs contacts from Notion database to Ecomail list
-- Filters only contacts with "Subscribed" checkbox checked
+- Filters only contacts with "Subcribe" checkbox checked
+- Sends tags from Notion to Ecomail
 - Updates existing subscribers if they already exist
+
+### Ecomail → Notion Sync
+- Syncs subscriber status (subscribed/unsubscribed) back to Notion
+- Updates tags from Ecomail to Notion
+- Syncs name, surname, and company changes
+- Keeps Notion database in sync with Ecomail changes
+
+### General
 - Runs automatically every 15 minutes via GitHub Actions
 - Can be triggered manually from GitHub Actions interface
 - Comprehensive error handling and logging
+- Detailed sync reports
 
 ## Prerequisites
 
