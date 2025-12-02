@@ -105,9 +105,9 @@ function findNotionPageByEmail(notionPages, email) {
 
 /**
  * Update Notion page with Ecomail data
- * Updates subscription status and tags from Ecomail
+ * Updates subscription status and syncs tags to match Ecomail exactly
  */
-async function updateNotionPage(pageId, ecomailSubscriber) {
+async function updateNotionPage(pageId, ecomailSubscriber, notionPage) {
   const updates = {};
 
   // Update Subscribe status based on Ecomail status
@@ -117,15 +117,22 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
     };
   }
 
-  // Update tags from Ecomail (including empty arrays to clear tags)
-  if (Array.isArray(ecomailSubscriber.tags)) {
+  // Sync tags to match Ecomail exactly
+  // Ecomail is the source of truth for tags
+  const ecomailTags = Array.isArray(ecomailSubscriber.tags) ? ecomailSubscriber.tags : [];
+  const notionTags = notionPage.properties.Tags?.multi_select?.map(tag => tag.name) || [];
+
+  // Only update if tags are different
+  const tagsAreDifferent = JSON.stringify(ecomailTags.sort()) !== JSON.stringify(notionTags.sort());
+
+  if (tagsAreDifferent) {
+    console.log(`   📝 Tags change detected for ${ecomailSubscriber.email}:`);
+    console.log(`      Notion: [${notionTags.join(', ')}]`);
+    console.log(`      Ecomail: [${ecomailTags.join(', ')}]`);
+    console.log(`      → Updating Notion to match Ecomail`);
+
     updates.Tags = {
-      multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
-    };
-  } else if (ecomailSubscriber.tags === null || ecomailSubscriber.tags === undefined) {
-    // If tags property doesn't exist, set to empty array
-    updates.Tags = {
-      multi_select: []
+      multi_select: ecomailTags.map(tag => ({ name: tag }))
     };
   }
 
@@ -232,7 +239,7 @@ async function main() {
       // Check if update is needed
       if (needsUpdate(notionPage, subscriber)) {
         try {
-          await updateNotionPage(notionPage.id, subscriber);
+          await updateNotionPage(notionPage.id, subscriber, notionPage);
           console.log(`✅ Updated: ${subscriber.email}`);
           updatedCount++;
         } catch (error) {
