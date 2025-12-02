@@ -89,42 +89,21 @@ function findNotionPageByEmail(notionPages, email) {
 
 /**
  * Update Notion page with Ecomail data
+ * ONLY updates subscription status - Notion is source of truth for everything else
  */
 async function updateNotionPage(pageId, ecomailSubscriber) {
   const updates = {};
 
-  // Update Subcribe status based on Ecomail status
+  // ONLY update Subcribe status based on Ecomail status
+  // Ecomail is the source of truth for subscription status
   if (ecomailSubscriber.status) {
     updates.Subcribe = {
       checkbox: ecomailSubscriber.status === 'SUBSCRIBED'
     };
   }
 
-  // Update tags if they exist
-  if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
-    updates.Tag = {
-      multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
-    };
-  }
-
-  // Update name fields if they changed
-  if (ecomailSubscriber.name !== undefined) {
-    updates.Jméno = {
-      rich_text: [{ text: { content: ecomailSubscriber.name || '' } }]
-    };
-  }
-
-  if (ecomailSubscriber.surname !== undefined) {
-    updates.Příjmení = {
-      rich_text: [{ text: { content: ecomailSubscriber.surname || '' } }]
-    };
-  }
-
-  if (ecomailSubscriber.company !== undefined) {
-    updates.Firma = {
-      rich_text: [{ text: { content: ecomailSubscriber.company || '' } }]
-    };
-  }
+  // DO NOT update tags - Notion is the source of truth for tags
+  // DO NOT update name/surname/company - Notion is the source of truth
 
   if (Object.keys(updates).length > 0) {
     await notion.pages.update({
@@ -139,46 +118,17 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
 
 /**
  * Compare and determine if update is needed
+ * ONLY check subscription status - Notion is source of truth for everything else
  */
 function needsUpdate(notionPage, ecomailSubscriber) {
   const props = notionPage.properties;
 
-  // Check subscription status
+  // ONLY check subscription status
+  // Ecomail is the source of truth for subscription status
   const notionSubscribed = props.Subcribe?.checkbox || false;
   const ecomailSubscribed = ecomailSubscriber.status === 'SUBSCRIBED';
-  if (notionSubscribed !== ecomailSubscribed) {
-    return true;
-  }
 
-  // Check tags
-  const notionTags = props.Tag?.multi_select?.map(t => t.name).sort() || [];
-  const ecomailTags = (ecomailSubscriber.tags || []).sort();
-  if (JSON.stringify(notionTags) !== JSON.stringify(ecomailTags)) {
-    return true;
-  }
-
-  // Check name
-  const notionName = props.Jméno?.rich_text?.[0]?.plain_text || '';
-  const ecomailName = ecomailSubscriber.name || '';
-  if (notionName !== ecomailName) {
-    return true;
-  }
-
-  // Check surname
-  const notionSurname = props.Příjmení?.rich_text?.[0]?.plain_text || '';
-  const ecomailSurname = ecomailSubscriber.surname || '';
-  if (notionSurname !== ecomailSurname) {
-    return true;
-  }
-
-  // Check company
-  const notionCompany = props.Firma?.rich_text?.[0]?.plain_text || '';
-  const ecomailCompany = ecomailSubscriber.company || '';
-  if (notionCompany !== ecomailCompany) {
-    return true;
-  }
-
-  return false;
+  return notionSubscribed !== ecomailSubscribed;
 }
 
 /**

@@ -4,17 +4,19 @@ Automatically sync contacts between Notion database and Ecomail mailing list usi
 
 ## Features
 
-### Notion → Ecomail Sync
-- Syncs contacts from Notion database to Ecomail list
+### Notion → Ecomail Sync (Source of Truth: Notion)
+- Syncs ALL contact data from Notion to Ecomail:
+  - Email, name, surname, company
+  - **Tags** (Notion is the source of truth for tags)
 - Filters only contacts with "Subcribe" checkbox checked
-- Sends tags from Notion to Ecomail
-- Updates existing subscribers if they already exist
+- Updates existing subscribers in Ecomail with Notion data
+- Creates new subscribers in Ecomail for new Notion contacts
 
-### Ecomail → Notion Sync
-- Syncs subscriber status (subscribed/unsubscribed) back to Notion
-- Updates tags from Ecomail to Notion
-- Syncs name, surname, and company changes
-- Keeps Notion database in sync with Ecomail changes
+### Ecomail → Notion Sync (Source of Truth: Ecomail)
+- Syncs **subscription status ONLY** from Ecomail to Notion
+  - Updates "Subcribe" checkbox based on Ecomail subscriber status
+  - Handles unsubscribes from Ecomail
+- **Does NOT sync** tags, name, surname, or company (Notion remains authoritative for these fields)
 
 ### General
 - Runs automatically every 15 minutes via GitHub Actions
