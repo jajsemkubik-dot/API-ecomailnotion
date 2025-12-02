@@ -145,7 +145,9 @@ async function main() {
         const response = await addToEcomail(contact);
 
         if (response.ok) {
+          const responseBody = await response.text();
           console.log(`✅ Synced: ${contact.email}`);
+          console.log(`   Response body: ${responseBody}`);
           successCount++;
         } else {
           const errorText = await response.text();
