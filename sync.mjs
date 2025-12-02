@@ -242,12 +242,14 @@ async function main() {
         console.log(`   Notion tags: ${JSON.stringify(contact.tags)}`);
         console.log(`   Ecomail subscriber data:`, JSON.stringify(ecomailSubscriber, null, 2));
 
-        // Handle subscription status
+        // Handle subscription status based on Notion
         if (contact.subscribe) {
-          // Contact should be subscribed
+          // Contact should be subscribed in Ecomail
+          const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
+          console.log(`   Ecomail status: ${ecomailStatus}`);
           console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
 
-          if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
+          if (ecomailStatus === 'SUBSCRIBED' && !needsEcomailUpdate(contact, ecomailSubscriber)) {
             console.log(`⏭️  No changes needed: ${contact.email}`);
             skippedCount++;
             continue;
@@ -268,8 +270,15 @@ async function main() {
             errorCount++;
           }
         } else {
-          // Contact should be unsubscribed
-          if (ecomailSubscriber && ecomailSubscriber.status === 'SUBSCRIBED') {
+          // Contact should be unsubscribed in Ecomail
+          const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
+          console.log(`   Ecomail status: ${ecomailStatus}`);
+
+          if (ecomailStatus === 'UNSUBSCRIBED' || ecomailStatus === 'NOT_FOUND') {
+            console.log(`⏭️  Already unsubscribed or not in list: ${contact.email}`);
+            skippedCount++;
+          } else {
+            // Status is SUBSCRIBED or something else - need to unsubscribe
             console.log(`🚫 Unsubscribing ${contact.email} from Ecomail`);
             const response = await unsubscribeFromEcomail(contact.email);
 
@@ -284,9 +293,6 @@ async function main() {
               console.error(`   Response: ${errorText}`);
               errorCount++;
             }
-          } else {
-            console.log(`⏭️  Already unsubscribed or not in list: ${contact.email}`);
-            skippedCount++;
           }
         }
       } catch (error) {
