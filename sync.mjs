@@ -200,12 +200,18 @@ async function main() {
         // Check if subscriber exists in Ecomail and if update is needed
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
 
+        console.log(`🔍 Comparison for ${contact.email}:`);
+        console.log(`   Notion tags: ${JSON.stringify(contact.tags)}`);
+        console.log(`   Ecomail subscriber data:`, JSON.stringify(ecomailSubscriber, null, 2));
+        console.log(`   Needs update: ${needsEcomailUpdate(contact, ecomailSubscriber)}`);
+
         if (!needsEcomailUpdate(contact, ecomailSubscriber)) {
           console.log(`⏭️  No changes needed: ${contact.email}`);
           skippedCount++;
           continue;
         }
 
+        console.log(`🚀 Sending update to Ecomail for ${contact.email}`);
         const response = await addToEcomail(contact);
 
         if (response.ok) {
