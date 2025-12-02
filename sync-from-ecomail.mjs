@@ -13,14 +13,17 @@ const notion = new Client({ auth: NOTION_TOKEN });
  * Fetch all subscribers from Ecomail list
  */
 async function fetchEcomailSubscribers() {
-  console.log('📥 Fetching subscribers from Ecomail...');
+  console.log('📥 Fetching ALL subscribers (including unsubscribed) from Ecomail...');
 
   const subscribers = [];
   let page = 1;
   let hasMore = true;
 
   while (hasMore) {
-    const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribers?page=${page}`;
+    // Add skip_unsubscribed=false to include unsubscribed contacts
+    const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribers?page=${page}&skip_unsubscribed=false`;
+
+    console.log(`🔍 Fetching page ${page}: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -31,24 +34,37 @@ async function fetchEcomailSubscribers() {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch subscribers: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch subscribers: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log(`📦 Received data structure:`, JSON.stringify(Object.keys(data)));
 
     // Ecomail returns data in a specific structure - adjust based on actual API response
     if (data.data && Array.isArray(data.data)) {
+      console.log(`   Page ${page}: ${data.data.length} contacts`);
       subscribers.push(...data.data);
 
       // Check if there are more pages
       hasMore = data.last_page ? page < data.last_page : false;
       page++;
     } else {
+      console.log(`   No more data found`);
       hasMore = false;
     }
   }
 
-  console.log(`✅ Fetched ${subscribers.length} subscribers from Ecomail`);
+  console.log(`✅ Fetched ${subscribers.length} total subscribers from Ecomail`);
+
+  // Count statuses
+  const statusCounts = subscribers.reduce((acc, sub) => {
+    const status = sub.status || 'UNKNOWN';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  console.log(`   Status breakdown:`, statusCounts);
+
   return subscribers;
 }
 
