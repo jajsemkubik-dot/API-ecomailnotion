@@ -151,19 +151,15 @@ async function addToEcomail(contact) {
  * Unsubscribe contact from Ecomail list
  */
 async function unsubscribeFromEcomail(email) {
-  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe`;
-
-  const payload = {
-    email: email
-  };
+  // Ecomail API expects email in URL path for unsubscribe
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe/${encodeURIComponent(email)}`;
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: 'DELETE',
     headers: {
       'key': ECOMAIL_API_KEY,
       'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
+    }
   });
 
   return response;
