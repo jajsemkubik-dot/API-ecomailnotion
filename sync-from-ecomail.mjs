@@ -119,7 +119,7 @@ async function updateNotionPage(pageId, ecomailSubscriber) {
 
   // Update tags from Ecomail if they exist
   if (ecomailSubscriber.tags && Array.isArray(ecomailSubscriber.tags)) {
-    updates.Tag = {
+    updates.Tags = {
       multi_select: ecomailSubscriber.tags.map(tag => ({ name: tag }))
     };
   }
@@ -153,7 +153,7 @@ function needsUpdate(notionPage, ecomailSubscriber) {
   }
 
   // Check tags
-  const notionTags = props.Tag?.multi_select?.map(tag => tag.name).sort() || [];
+  const notionTags = props.Tags?.multi_select?.map(tag => tag.name).sort() || [];
   const ecomailTags = (ecomailSubscriber.tags || []).sort();
 
   // Compare tag arrays
