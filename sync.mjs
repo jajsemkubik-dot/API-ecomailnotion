@@ -44,6 +44,9 @@ function extractContactData(page) {
   const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
   // Extract Subscribe field (Select type with "Yes" or "No" values)
+  // Debug: Log the raw Subscribe property structure
+  console.log(`\n🔬 DEBUG - Raw Subscribe property:`, JSON.stringify(properties.Subscribe, null, 2));
+
   const subscribeValue = properties.Subscribe?.select?.name || null;
   const subscribe = subscribeValue === 'Yes';
 
@@ -171,7 +174,17 @@ async function unsubscribeFromEcomail(email) {
 
   console.log(`   📥 Response status: ${response.status} ${response.statusText}`);
 
-  return response;
+  // Log response body for debugging
+  const responseText = await response.text();
+  console.log(`   📥 Response body: ${responseText}`);
+
+  // Create a new response with the same status for return (since we consumed the body)
+  return {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    text: async () => responseText
+  };
 }
 
 /**
@@ -213,6 +226,8 @@ async function main() {
     let errorCount = 0;
     let skippedCount = 0;
     let unsubscribedCount = 0;
+
+    console.log(`ℹ️  Processing ${pages.length} contacts from Notion...\n`);
 
     // Process each contact
     for (const page of pages) {
