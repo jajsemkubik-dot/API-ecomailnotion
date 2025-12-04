@@ -84,7 +84,20 @@ function extractContactData(page) {
   const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
   // Extract Marketingový status field (Select type with "Ano" or "Ne" values)
-  const subscribeValue = properties['Marketingový status']?.select?.name || null;
+  // Try to find the property - check if it exists
+  let subscribeValue = null;
+  const marketingField = properties['Marketingový status'];
+
+  if (!marketingField) {
+    // Property not found - log available properties for debugging
+    const availableProps = Object.keys(properties).join(', ');
+    console.warn(`⚠️  Warning: 'Marketingový status' property not found. Available: ${availableProps}`);
+  } else if (marketingField.type !== 'select') {
+    console.warn(`⚠️  Warning: 'Marketingový status' is type '${marketingField.type}', expected 'select'`);
+  } else {
+    subscribeValue = marketingField.select?.name || null;
+  }
+
   const subscribe = subscribeValue === 'Ano';
 
   return {
