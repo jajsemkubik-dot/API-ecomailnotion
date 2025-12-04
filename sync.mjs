@@ -117,14 +117,15 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
 
 /**
  * Add or update subscriber in Ecomail list
+ * Status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
  */
 async function addToEcomail(contact) {
-  // Try both API endpoints (api2.ecomailapp.cz is the official one from PHP library)
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
 
   // Build subscriber_data object, only including non-null values
   const subscriber_data = {
-    email: contact.email
+    email: contact.email,
+    status: 1  // 1 = subscribed
   };
 
   if (contact.name) subscriber_data.name = contact.name;
@@ -157,19 +158,32 @@ async function addToEcomail(contact) {
 
 /**
  * Unsubscribe contact from Ecomail list
+ * Uses the subscribe endpoint with status=2 (unsubscribed)
+ * Status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
  */
 async function unsubscribeFromEcomail(email) {
-  // Ecomail API expects email in URL path for unsubscribe
-  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe/${encodeURIComponent(email)}`;
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
 
-  console.log(`   📤 DELETE ${url}`);
+  const payload = {
+    subscriber_data: {
+      email: email,
+      status: 2  // 2 = unsubscribed
+    },
+    update_existing: true,
+    trigger_autoresponders: false,  // Don't trigger autoresponders for unsubscribe
+    skip_confirmation: true
+  };
+
+  console.log(`   📤 POST ${url}`);
+  console.log(`   📦 Payload:`, JSON.stringify(payload, null, 2));
 
   const response = await fetch(url, {
-    method: 'DELETE',
+    method: 'POST',
     headers: {
       'key': ECOMAIL_API_KEY,
       'Content-Type': 'application/json'
-    }
+    },
+    body: JSON.stringify(payload)
   });
 
   console.log(`   📥 Response status: ${response.status} ${response.statusText}`);

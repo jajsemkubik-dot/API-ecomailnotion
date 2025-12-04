@@ -131,8 +131,9 @@ npm run sync
 1. **Query Notion**: Fetches all contacts from the Notion database
 2. **Extract Data**: Extracts email, name, surname, company, tags, and subscription status from each contact
 3. **Sync to Ecomail**:
-   - If `Subscribe` = "Yes": Subscribes or updates the contact in Ecomail
-   - If `Subscribe` = "No": Unsubscribes the contact from Ecomail
+   - If `Subscribe` = "Yes": Subscribes or updates the contact in Ecomail (sets `status=1`)
+   - If `Subscribe` = "No": Unsubscribes the contact from Ecomail (sets `status=2`)
+   - Uses Ecomail status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
    - If contact exists: Updates their information
    - If contact is new: Adds them to the list
 4. **Logging**: Outputs detailed logs of success/failure for each contact
