@@ -43,13 +43,18 @@ function extractContactData(page) {
   // Extract tags from multiselect property
   const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
+  // Extract Subscribe field (Select type with "Yes" or "No" values)
+  const subscribeValue = properties.Subscribe?.select?.name || null;
+  const subscribe = subscribeValue === 'Yes';
+
   return {
     email: properties.Email?.email || null,
     name: properties.Jméno?.rich_text?.[0]?.plain_text || null,
     surname: properties.Příjmení?.rich_text?.[0]?.plain_text || null,
     company: properties.Firma?.rich_text?.[0]?.plain_text || null,
     tags: tags.length > 0 ? tags : null,
-    subscribe: properties.Subscribe?.checkbox || false
+    subscribe: subscribe,
+    subscribeRaw: subscribeValue  // Keep raw value for debugging
   };
 }
 
@@ -225,9 +230,9 @@ async function main() {
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
         const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
 
-        // Debug: Log the Subscribe checkbox value
+        // Debug: Log the Subscribe field value
         console.log(`\n🔍 Processing: ${contact.email}`);
-        console.log(`   Notion Subscribe checkbox: ${contact.subscribe}`);
+        console.log(`   Notion Subscribe field: "${contact.subscribeRaw}" → boolean: ${contact.subscribe}`);
         console.log(`   Ecomail current status: ${ecomailStatus}`);
 
         // Handle subscription status based on Notion
