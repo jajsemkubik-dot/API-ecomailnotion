@@ -130,23 +130,20 @@ async function testEcomailUnsubscribe(testEmail) {
     }
 
     console.log('\nStep 2: Attempting to unsubscribe (setting status=2)...');
-    const unsubUrl = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
-    console.log(`POST ${unsubUrl}`);
+    const unsubUrl = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/update-subscriber`;
+    console.log(`PUT ${unsubUrl}`);
 
     const payload = {
       subscriber_data: {
         email: testEmail,
         status: 2  // 2 = unsubscribed (1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam, 6=unconfirmed)
-      },
-      update_existing: true,
-      trigger_autoresponders: false,
-      skip_confirmation: true
+      }
     };
 
     console.log('Payload:', JSON.stringify(payload, null, 2));
 
     const unsubResponse = await fetch(unsubUrl, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'key': ECOMAIL_API_KEY,
         'Content-Type': 'application/json'

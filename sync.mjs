@@ -158,27 +158,24 @@ async function addToEcomail(contact) {
 
 /**
  * Unsubscribe contact from Ecomail list
- * Uses the subscribe endpoint with status=2 (unsubscribed)
+ * According to Ecomail API docs: PUT /lists/{list_id}/update-subscriber
  * Status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
  */
 async function unsubscribeFromEcomail(email) {
-  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/update-subscriber`;
 
   const payload = {
     subscriber_data: {
       email: email,
       status: 2  // 2 = unsubscribed
-    },
-    update_existing: true,
-    trigger_autoresponders: false,  // Don't trigger autoresponders for unsubscribe
-    skip_confirmation: true
+    }
   };
 
-  console.log(`   📤 POST ${url}`);
+  console.log(`   📤 PUT ${url}`);
   console.log(`   📦 Payload:`, JSON.stringify(payload, null, 2));
 
   const response = await fetch(url, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'key': ECOMAIL_API_KEY,
       'Content-Type': 'application/json'
