@@ -6,7 +6,7 @@ const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const ECOMAIL_API_KEY = process.env.ECOMAIL_API_KEY;
 const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 
-// Ecomail status codes
+// Ecomail status codes (used when sending to API)
 const ECOMAIL_STATUS = {
   SUBSCRIBED: 1,
   UNSUBSCRIBED: 2,
@@ -14,6 +14,37 @@ const ECOMAIL_STATUS = {
   SPAM_COMPLAINT: 5,
   UNCONFIRMED: 6
 };
+
+// Ecomail API may return status as strings - convert to numeric codes
+const STATUS_STRING_TO_CODE = {
+  'SUBSCRIBED': 1,
+  'UNSUBSCRIBED': 2,
+  'HARD_BOUNCE': 4,
+  'SPAM_COMPLAINT': 5,
+  'UNCONFIRMED': 6
+};
+
+/**
+ * Normalize Ecomail status to numeric code
+ * API may return string ('SUBSCRIBED') or number (1)
+ */
+function normalizeEcomailStatus(status) {
+  if (status === null || status === undefined) {
+    return 'NOT_FOUND';
+  }
+
+  // If already a number, return it
+  if (typeof status === 'number') {
+    return status;
+  }
+
+  // If string, convert to number
+  if (typeof status === 'string') {
+    return STATUS_STRING_TO_CODE[status] || status;
+  }
+
+  return status;
+}
 
 // Initialize Notion client
 const notion = new Client({ auth: NOTION_TOKEN });
@@ -281,7 +312,7 @@ async function main() {
       try {
         // Check if subscriber exists in Ecomail
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
-        const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
+        const ecomailStatus = normalizeEcomailStatus(ecomailSubscriber?.status);
 
         // Handle subscription status based on Notion
         // Only process if Subscribe field is explicitly set (not null/undefined)
