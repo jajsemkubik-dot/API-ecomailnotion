@@ -155,8 +155,21 @@ function extractContactData(page) {
 
   // Extract Marketingový status field (Select type with "Ano" or "Ne" values)
   // Try to find the property - check if it exists
+  // Use Unicode normalization to handle different encodings of Czech characters
   let subscribeValue = null;
-  const marketingField = properties['Marketingový status'];
+  const marketingPropName = 'Marketingový status'.normalize('NFC');
+
+  // Try direct match first, then normalized search
+  let marketingField = properties[marketingPropName];
+  if (!marketingField) {
+    // Try to find property with different Unicode normalization
+    const matchingKey = Object.keys(properties).find(
+      k => k.normalize('NFC') === marketingPropName
+    );
+    if (matchingKey) {
+      marketingField = properties[matchingKey];
+    }
+  }
 
   if (!marketingField) {
     // Property not found - log available properties for debugging
@@ -223,9 +236,10 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
 
   // Compare tags - Always check if tags field exists (even if empty array)
   // This allows clearing tags by setting empty array in Notion
-  if (notionContact.tags !== undefined) {
+  // Use Array.isArray to safely handle null/undefined values
+  if (Array.isArray(notionContact.tags)) {
     const notionTags = [...notionContact.tags].sort();  // Create copy to avoid mutation
-    const ecomailTags = [...(ecomailSubscriber.tags || [])].sort();
+    const ecomailTags = [...(ecomailSubscriber?.tags || [])].sort();
 
     if (notionTags.length !== ecomailTags.length) {
       return true;
@@ -267,6 +281,7 @@ async function addToEcomail(contact) {
   const payload = {
     subscriber_data,
     update_existing: true,
+    resubscribe: true,  // CRITICAL: Required to re-subscribe previously unsubscribed contacts
     trigger_autoresponders: true,
     skip_confirmation: true
   };
@@ -432,8 +447,15 @@ async function main() {
           const response = await addToEcomail(contact);
 
           if (response.ok) {
-            console.log(`✅ Subscribed: ${contact.email}`);
-            successCount++;
+            // Validate response body - Ecomail might return 200 with error in body
+            const result = await response.json();
+            if (result.error) {
+              console.error(`❌ API error for ${contact.email}: ${JSON.stringify(result)}`);
+              errorCount++;
+            } else {
+              console.log(`✅ Subscribed: ${contact.email}`);
+              successCount++;
+            }
           } else {
             const errorText = await response.text();
             console.error(`❌ Failed to subscribe ${contact.email}: ${response.status} - ${errorText}`);
@@ -448,8 +470,15 @@ async function main() {
               const response = await updateUnsubscribedContact(contact);
 
               if (response.ok) {
-                console.log(`✅ Updated (unsubscribed): ${contact.email}`);
-                successCount++;
+                // Validate response body - Ecomail might return 200 with error in body
+                const result = await response.json();
+                if (result.error) {
+                  console.error(`❌ API error updating ${contact.email}: ${JSON.stringify(result)}`);
+                  errorCount++;
+                } else {
+                  console.log(`✅ Updated (unsubscribed): ${contact.email}`);
+                  successCount++;
+                }
               } else {
                 const errorText = await response.text();
                 console.error(`❌ Failed to update ${contact.email}: ${response.status} - ${errorText}`);
@@ -464,8 +493,15 @@ async function main() {
             const response = await unsubscribeFromEcomail(contact.email);
 
             if (response.ok) {
-              console.log(`✅ Unsubscribed: ${contact.email}`);
-              unsubscribedCount++;
+              // Validate response body - Ecomail might return 200 with error in body
+              const result = await response.json();
+              if (result.error) {
+                console.error(`❌ API error unsubscribing ${contact.email}: ${JSON.stringify(result)}`);
+                errorCount++;
+              } else {
+                console.log(`✅ Unsubscribed: ${contact.email}`);
+                unsubscribedCount++;
+              }
             } else {
               const errorText = await response.text();
               console.error(`❌ Failed to unsubscribe ${contact.email}: ${response.status} - ${errorText}`);
