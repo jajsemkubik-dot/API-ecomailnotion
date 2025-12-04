@@ -264,11 +264,16 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
 /**
  * Add or update subscriber in Ecomail list
  * Status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
+ * 
+ * According to Ecomail API documentation:
+ * - tags must be INSIDE subscriber_data
+ * - resubscribe: true forces re-subscription of unsubscribed contacts
  */
 async function addToEcomail(contact) {
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscribe`;
 
   // Build subscriber_data object, only including non-null values
+  // IMPORTANT: tags go INSIDE subscriber_data per API docs
   const subscriber_data = {
     email: contact.email,
     status: ECOMAIL_STATUS.SUBSCRIBED
@@ -278,6 +283,11 @@ async function addToEcomail(contact) {
   if (contact.surname) subscriber_data.surname = contact.surname;
   if (contact.company) subscriber_data.company = contact.company;
 
+  // Tags MUST be inside subscriber_data according to API documentation
+  if (Array.isArray(contact.tags)) {
+    subscriber_data.tags = contact.tags;
+  }
+
   const payload = {
     subscriber_data,
     update_existing: true,
@@ -286,11 +296,8 @@ async function addToEcomail(contact) {
     skip_confirmation: true
   };
 
-  // Always send tags (even empty array to allow clearing)
-  // Tags must be sent separately according to Ecomail API
-  if (contact.tags !== undefined) {
-    payload.tags = contact.tags;
-  }
+  console.log(`   📤 API Request: POST ${url}`);
+  console.log(`   📦 Payload: ${JSON.stringify(payload)}`);
 
   const response = await fetchWithRetry(url, {
     method: 'POST',
@@ -306,21 +313,21 @@ async function addToEcomail(contact) {
 
 /**
  * Unsubscribe contact from Ecomail list
- * According to Ecomail API docs: PUT /lists/{list_id}/update-subscriber
- * Status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
+ * According to Ecomail API docs: DELETE /lists/{list_id}/unsubscribe
+ * This is the correct endpoint - NOT update-subscriber with status:2
  */
 async function unsubscribeFromEcomail(email) {
-  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/update-subscriber`;
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe`;
 
   const payload = {
-    subscriber_data: {
-      email: email,
-      status: ECOMAIL_STATUS.UNSUBSCRIBED
-    }
+    email: email
   };
 
+  console.log(`   📤 API Request: DELETE ${url}`);
+  console.log(`   📦 Payload: ${JSON.stringify(payload)}`);
+
   const response = await fetchWithRetry(url, {
-    method: 'PUT',
+    method: 'DELETE',
     headers: {
       'key': ECOMAIL_API_KEY,
       'Content-Type': 'application/json'
@@ -334,28 +341,35 @@ async function unsubscribeFromEcomail(email) {
 /**
  * Update unsubscribed contact's information (tags, name, etc.) without changing subscription status
  * Used when contact is already unsubscribed but tags or other info need updating
+ * 
+ * Uses PUT /lists/{list_id}/update-subscriber endpoint
+ * Note: tags must be inside subscriber_data per API documentation
  */
 async function updateUnsubscribedContact(contact) {
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/update-subscriber`;
 
-  // Build subscriber_data object, keeping UNSUBSCRIBED status
+  // Build subscriber_data object
+  // Note: We don't set status here - just update the other fields
   const subscriber_data = {
-    email: contact.email,
-    status: ECOMAIL_STATUS.UNSUBSCRIBED  // Keep unsubscribed status
+    email: contact.email
   };
 
   if (contact.name) subscriber_data.name = contact.name;
   if (contact.surname) subscriber_data.surname = contact.surname;
   if (contact.company) subscriber_data.company = contact.company;
 
+  // Tags MUST be inside subscriber_data according to API documentation
+  if (Array.isArray(contact.tags)) {
+    subscriber_data.tags = contact.tags;
+  }
+
   const payload = {
+    email: contact.email,  // Required at top level for update-subscriber
     subscriber_data
   };
 
-  // Always send tags (even empty array to allow clearing)
-  if (contact.tags !== undefined) {
-    payload.tags = contact.tags;
-  }
+  console.log(`   📤 API Request: PUT ${url}`);
+  console.log(`   📦 Payload: ${JSON.stringify(payload)}`);
 
   const response = await fetchWithRetry(url, {
     method: 'PUT',
