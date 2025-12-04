@@ -44,9 +44,6 @@ function extractContactData(page) {
   const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
   // Extract Subscribe field (Select type with "Yes" or "No" values)
-  // Debug: Log the raw Subscribe property structure
-  console.log(`\n🔬 DEBUG - Raw Subscribe property:`, JSON.stringify(properties.Subscribe, null, 2));
-
   const subscribeValue = properties.Subscribe?.select?.name || null;
   const subscribe = subscribeValue === 'Yes';
 
@@ -171,9 +168,6 @@ async function unsubscribeFromEcomail(email) {
     }
   };
 
-  console.log(`   📤 PUT ${url}`);
-  console.log(`   📦 Payload:`, JSON.stringify(payload, null, 2));
-
   const response = await fetch(url, {
     method: 'PUT',
     headers: {
@@ -183,19 +177,7 @@ async function unsubscribeFromEcomail(email) {
     body: JSON.stringify(payload)
   });
 
-  console.log(`   📥 Response status: ${response.status} ${response.statusText}`);
-
-  // Log response body for debugging
-  const responseText = await response.text();
-  console.log(`   📥 Response body: ${responseText}`);
-
-  // Create a new response with the same status for return (since we consumed the body)
-  return {
-    ok: response.ok,
-    status: response.status,
-    statusText: response.statusText,
-    text: async () => responseText
-  };
+  return response;
 }
 
 /**
@@ -238,8 +220,6 @@ async function main() {
     let skippedCount = 0;
     let unsubscribedCount = 0;
 
-    console.log(`ℹ️  Processing ${pages.length} contacts from Notion...\n`);
-
     // Process each contact
     for (const page of pages) {
       const contact = extractContactData(page);
@@ -255,11 +235,6 @@ async function main() {
         // Check if subscriber exists in Ecomail
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
         const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
-
-        // Debug: Log the Subscribe field value
-        console.log(`\n🔍 Processing: ${contact.email}`);
-        console.log(`   Notion Subscribe field: "${contact.subscribeRaw}" → boolean: ${contact.subscribe}`);
-        console.log(`   Ecomail current status: ${ecomailStatus}`);
 
         // Handle subscription status based on Notion
         if (contact.subscribe) {
@@ -282,13 +257,11 @@ async function main() {
           }
         } else {
           // Contact should be unsubscribed in Ecomail (Odhlášen)
-          console.log(`   → Action: Should be UNSUBSCRIBED (checkbox is unchecked)`);
           if (ecomailStatus === 'UNSUBSCRIBED' || ecomailStatus === 'NOT_FOUND') {
             console.log(`⏭️  Already unsubscribed: ${contact.email}`);
             skippedCount++;
           } else {
             // Status is SUBSCRIBED - need to unsubscribe
-            console.log(`   → Calling unsubscribe API...`);
             const response = await unsubscribeFromEcomail(contact.email);
 
             if (response.ok) {
