@@ -6,6 +6,15 @@ const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
 const ECOMAIL_API_KEY = process.env.ECOMAIL_API_KEY;
 const ECOMAIL_LIST_ID = process.env.ECOMAIL_LIST_ID;
 
+// Ecomail status codes
+const ECOMAIL_STATUS = {
+  SUBSCRIBED: 1,
+  UNSUBSCRIBED: 2,
+  HARD_BOUNCE: 4,
+  SPAM_COMPLAINT: 5,
+  UNCONFIRMED: 6
+};
+
 // Initialize Notion client
 const notion = new Client({ auth: NOTION_TOKEN });
 
@@ -122,7 +131,7 @@ async function addToEcomail(contact) {
   // Build subscriber_data object, only including non-null values
   const subscriber_data = {
     email: contact.email,
-    status: 1  // 1 = subscribed
+    status: ECOMAIL_STATUS.SUBSCRIBED
   };
 
   if (contact.name) subscriber_data.name = contact.name;
@@ -164,7 +173,7 @@ async function unsubscribeFromEcomail(email) {
   const payload = {
     subscriber_data: {
       email: email,
-      status: 2  // 2 = unsubscribed
+      status: ECOMAIL_STATUS.UNSUBSCRIBED
     }
   };
 
@@ -237,9 +246,16 @@ async function main() {
         const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
 
         // Handle subscription status based on Notion
+        // Only process if Subscribe field is explicitly set (not null/undefined)
+        if (contact.subscribeRaw === null) {
+          console.log(`⚠️  Skipping ${contact.email}: Subscribe field not set`);
+          skippedCount++;
+          continue;
+        }
+
         if (contact.subscribe) {
-          // Contact should be subscribed in Ecomail (Přihlášen)
-          if (ecomailStatus === 'SUBSCRIBED' && !needsEcomailUpdate(contact, ecomailSubscriber)) {
+          // Contact should be subscribed in Ecomail (Subscribe = "Yes")
+          if (ecomailStatus === ECOMAIL_STATUS.SUBSCRIBED && !needsEcomailUpdate(contact, ecomailSubscriber)) {
             console.log(`⏭️  No changes: ${contact.email}`);
             skippedCount++;
             continue;
@@ -256,8 +272,8 @@ async function main() {
             errorCount++;
           }
         } else {
-          // Contact should be unsubscribed in Ecomail (Odhlášen)
-          if (ecomailStatus === 'UNSUBSCRIBED' || ecomailStatus === 'NOT_FOUND') {
+          // Contact should be unsubscribed in Ecomail (Subscribe = "No")
+          if (ecomailStatus === ECOMAIL_STATUS.UNSUBSCRIBED || ecomailStatus === 'NOT_FOUND') {
             console.log(`⏭️  Already unsubscribed: ${contact.email}`);
             skippedCount++;
           } else {
