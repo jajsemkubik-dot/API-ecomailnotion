@@ -190,6 +190,44 @@ async function unsubscribeFromEcomail(email) {
 }
 
 /**
+ * Update unsubscribed contact's information (tags, name, etc.) without changing subscription status
+ * Used when contact is already unsubscribed but tags or other info need updating
+ */
+async function updateUnsubscribedContact(contact) {
+  const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/update-subscriber`;
+
+  // Build subscriber_data object, keeping UNSUBSCRIBED status
+  const subscriber_data = {
+    email: contact.email,
+    status: ECOMAIL_STATUS.UNSUBSCRIBED  // Keep unsubscribed status
+  };
+
+  if (contact.name) subscriber_data.name = contact.name;
+  if (contact.surname) subscriber_data.surname = contact.surname;
+  if (contact.company) subscriber_data.company = contact.company;
+
+  const payload = {
+    subscriber_data
+  };
+
+  // Add tags if they exist
+  if (contact.tags && contact.tags.length > 0) {
+    payload.tags = contact.tags;
+  }
+
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: {
+      'key': ECOMAIL_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return response;
+}
+
+/**
  * Main sync function
  */
 async function main() {
@@ -274,8 +312,23 @@ async function main() {
         } else {
           // Contact should be unsubscribed in Ecomail (Subscribe = "No")
           if (ecomailStatus === ECOMAIL_STATUS.UNSUBSCRIBED || ecomailStatus === 'NOT_FOUND') {
-            console.log(`⏭️  Already unsubscribed: ${contact.email}`);
-            skippedCount++;
+            // Already unsubscribed, but check if tags/info need updating
+            if (ecomailStatus === ECOMAIL_STATUS.UNSUBSCRIBED && needsEcomailUpdate(contact, ecomailSubscriber)) {
+              // Update tags/info while keeping unsubscribed status
+              const response = await updateUnsubscribedContact(contact);
+
+              if (response.ok) {
+                console.log(`✅ Updated (unsubscribed): ${contact.email}`);
+                successCount++;
+              } else {
+                const errorText = await response.text();
+                console.error(`❌ Failed to update ${contact.email}: ${response.status} - ${errorText}`);
+                errorCount++;
+              }
+            } else {
+              console.log(`⏭️  Already unsubscribed: ${contact.email}`);
+              skippedCount++;
+            }
           } else {
             // Status is SUBSCRIBED - need to unsubscribe
             const response = await unsubscribeFromEcomail(contact.email);
