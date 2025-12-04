@@ -196,9 +196,14 @@ function extractContactData(page) {
 
 /**
  * Fetch existing subscriber from Ecomail to check for changes
+ * 
+ * According to API docs, response format is:
+ * { "subscriber": { "status": 1, "email": "...", "tags": [...], ... } }
  */
 async function fetchEcomailSubscriber(email) {
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscriber/${encodeURIComponent(email)}`;
+
+  console.log(`   🔍 Fetching subscriber: ${email}`);
 
   const response = await fetchWithRetry(url, {
     method: 'GET',
@@ -210,11 +215,18 @@ async function fetchEcomailSubscriber(email) {
 
   if (response.ok) {
     const data = await response.json();
-    return data;
+
+    // API returns { "subscriber": { ... } } - extract the subscriber object
+    const subscriber = data.subscriber || data;
+
+    console.log(`   📥 Ecomail status: ${subscriber.status} (${subscriber.status === 1 ? 'SUBSCRIBED' : subscriber.status === 2 ? 'UNSUBSCRIBED' : 'OTHER'})`);
+
+    return subscriber;
   }
 
   // 404 means subscriber doesn't exist - this is OK
   if (response.status === 404) {
+    console.log(`   📥 Subscriber not found in Ecomail`);
     return null;
   }
 
@@ -437,26 +449,36 @@ async function main() {
         continue;
       }
 
+      console.log(`\n${'─'.repeat(60)}`);
+      console.log(`📧 Processing: ${contact.email}`);
+      console.log(`   📋 Notion Marketingový status: "${contact.subscribeRaw}" → subscribe=${contact.subscribe}`);
+
       try {
         // Check if subscriber exists in Ecomail
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
         const ecomailStatus = normalizeEcomailStatus(ecomailSubscriber?.status);
 
+        console.log(`   📊 Ecomail normalized status: ${ecomailStatus} (${ecomailStatus === 1 ? 'SUBSCRIBED' : ecomailStatus === 2 ? 'UNSUBSCRIBED' : ecomailStatus === 'NOT_FOUND' ? 'NOT IN LIST' : 'OTHER'})`);
+
         // Handle subscription status based on Notion
         // Only process if Marketingový status field is explicitly set (not null/undefined)
         if (contact.subscribeRaw === null) {
-          console.log(`⚠️  Skipping ${contact.email}: Marketingový status field not set`);
+          console.log(`   ⚠️  Skipping: Marketingový status field not set`);
           skippedCount++;
           continue;
         }
 
         if (contact.subscribe) {
           // Contact should be subscribed in Ecomail (Marketingový status = "Ano")
+          console.log(`   🎯 Action needed: SUBSCRIBE (Notion wants subscribed)`);
+
           if (ecomailStatus === ECOMAIL_STATUS.SUBSCRIBED && !needsEcomailUpdate(contact, ecomailSubscriber)) {
-            console.log(`⏭️  No changes: ${contact.email}`);
+            console.log(`   ⏭️  Already subscribed with no changes needed`);
             skippedCount++;
             continue;
           }
+
+          console.log(`   📤 Calling addToEcomail()...`);
 
           const response = await addToEcomail(contact);
 
