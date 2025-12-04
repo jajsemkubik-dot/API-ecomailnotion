@@ -123,6 +123,7 @@ async function fetchEcomailSubscriber(email) {
 
 /**
  * Check if contact needs update in Ecomail
+ * Only checks fields that will actually be sent (non-null values from Notion)
  */
 function needsEcomailUpdate(notionContact, ecomailSubscriber) {
   if (!ecomailSubscriber) {
@@ -144,10 +145,11 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
     }
   }
 
-  // Compare other fields
-  if (notionContact.name !== ecomailSubscriber.name) return true;
-  if (notionContact.surname !== ecomailSubscriber.surname) return true;
-  if (notionContact.company !== ecomailSubscriber.company) return true;
+  // Compare other fields - ONLY if Notion has non-null values
+  // This matches the update logic which only sends non-null fields
+  if (notionContact.name && notionContact.name !== ecomailSubscriber.name) return true;
+  if (notionContact.surname && notionContact.surname !== ecomailSubscriber.surname) return true;
+  if (notionContact.company && notionContact.company !== ecomailSubscriber.company) return true;
 
   return false;
 }
