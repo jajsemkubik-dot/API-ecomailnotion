@@ -64,7 +64,9 @@ npm install
 
 ### 3. Configure GitHub Secrets
 
-Go to your GitHub repository → Settings → Secrets and variables → Actions → New repository secret
+Go to your GitHub repository → Settings → Secrets and variables → Actions → **Secrets** → New repository secret
+
+**IMPORTANT**: Add these as **Secrets** (not Variables). The workflow uses `secrets.*` to access them.
 
 Add the following secrets:
 
