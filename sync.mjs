@@ -154,6 +154,8 @@ async function unsubscribeFromEcomail(email) {
   // Ecomail API expects email in URL path for unsubscribe
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/unsubscribe/${encodeURIComponent(email)}`;
 
+  console.log(`   📤 DELETE ${url}`);
+
   const response = await fetch(url, {
     method: 'DELETE',
     headers: {
@@ -161,6 +163,8 @@ async function unsubscribeFromEcomail(email) {
       'Content-Type': 'application/json'
     }
   });
+
+  console.log(`   📥 Response status: ${response.status} ${response.statusText}`);
 
   return response;
 }
@@ -221,6 +225,11 @@ async function main() {
         const ecomailSubscriber = await fetchEcomailSubscriber(contact.email);
         const ecomailStatus = ecomailSubscriber?.status || 'NOT_FOUND';
 
+        // Debug: Log the Subscribe checkbox value
+        console.log(`\n🔍 Processing: ${contact.email}`);
+        console.log(`   Notion Subscribe checkbox: ${contact.subscribe}`);
+        console.log(`   Ecomail current status: ${ecomailStatus}`);
+
         // Handle subscription status based on Notion
         if (contact.subscribe) {
           // Contact should be subscribed in Ecomail (Přihlášen)
@@ -242,11 +251,13 @@ async function main() {
           }
         } else {
           // Contact should be unsubscribed in Ecomail (Odhlášen)
+          console.log(`   → Action: Should be UNSUBSCRIBED (checkbox is unchecked)`);
           if (ecomailStatus === 'UNSUBSCRIBED' || ecomailStatus === 'NOT_FOUND') {
             console.log(`⏭️  Already unsubscribed: ${contact.email}`);
             skippedCount++;
           } else {
             // Status is SUBSCRIBED - need to unsubscribe
+            console.log(`   → Calling unsubscribe API...`);
             const response = await unsubscribeFromEcomail(contact.email);
 
             if (response.ok) {
