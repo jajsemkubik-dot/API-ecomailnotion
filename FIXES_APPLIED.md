@@ -103,21 +103,44 @@ This function:
 - Updates tags
 - Maintains `status: 2` (UNSUBSCRIBED)
 
-### 7. Infinite Update Loop Prevention
+### 7. Infinite Update Loop Prevention (Tags and Fields)
 **Issue**: `needsEcomailUpdate()` checked all fields, but updates only sent non-null values
 **Impact**: Contacts showed as needing updates every sync run
-**Example**: Notion has `name=null`, Ecomail has `name="John"` → detected difference but didn't send update
 
-**Fix**: Modified `needsEcomailUpdate()` to only check non-null Notion values (lines 148-152)
+**Example 1 - Name field**:
+- Notion has `name=null`, Ecomail has `name="John"`
+- Detected difference but didn't send update → infinite loop
 
-**Before**:
+**Example 2 - Tags field (CRITICAL)**:
+- Notion has `tags=null`, Ecomail has `tags=['old-tag']`
+- Comparison treated null as `[]`, detected difference
+- API call didn't include tags field → Ecomail kept tags → infinite loop
+
+**Fix**: Modified `needsEcomailUpdate()` to only check fields that will actually be sent
+
+**Before (Tags)**:
 ```javascript
-if (notionContact.name !== ecomailSubscriber.name) return true;
+const notionTags = (notionContact.tags || []).sort();  // null becomes []
+const ecomailTags = (ecomailSubscriber.tags || []).sort();
+if (notionTags.length !== ecomailTags.length) return true;  // Always true when Notion=null, Ecomail has tags
 ```
 
-**After**:
+**After (Tags)**:
+```javascript
+// Only compare tags if Notion has tags to send
+if (notionContact.tags && notionContact.tags.length > 0) {
+  const notionTags = notionContact.tags.sort();
+  const ecomailTags = (ecomailSubscriber.tags || []).sort();
+  // ... comparison ...
+}
+// If Notion has no tags, skip comparison (API won't send tags field)
+```
+
+**After (Other fields)**:
 ```javascript
 if (notionContact.name && notionContact.name !== ecomailSubscriber.name) return true;
+if (notionContact.surname && notionContact.surname !== ecomailSubscriber.surname) return true;
+if (notionContact.company && notionContact.company !== ecomailSubscriber.company) return true;
 ```
 
 ## Improvements

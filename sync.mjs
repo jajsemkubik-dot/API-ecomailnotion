@@ -137,6 +137,7 @@ async function fetchEcomailSubscriber(email) {
 /**
  * Check if contact needs update in Ecomail
  * Only checks fields that will actually be sent (non-null values from Notion)
+ * IMPORTANT: This logic must exactly match what addToEcomail() sends
  */
 function needsEcomailUpdate(notionContact, ecomailSubscriber) {
   if (!ecomailSubscriber) {
@@ -144,19 +145,24 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
     return true;
   }
 
-  // Compare tags
-  const notionTags = (notionContact.tags || []).sort();
-  const ecomailTags = (ecomailSubscriber.tags || []).sort();
+  // Compare tags - ONLY if Notion has tags to send
+  // This matches addToEcomail() which only sends tags if they exist
+  if (notionContact.tags && notionContact.tags.length > 0) {
+    const notionTags = notionContact.tags.sort();
+    const ecomailTags = (ecomailSubscriber.tags || []).sort();
 
-  if (notionTags.length !== ecomailTags.length) {
-    return true;
-  }
-
-  for (let i = 0; i < notionTags.length; i++) {
-    if (notionTags[i] !== ecomailTags[i]) {
+    if (notionTags.length !== ecomailTags.length) {
       return true;
     }
+
+    for (let i = 0; i < notionTags.length; i++) {
+      if (notionTags[i] !== ecomailTags[i]) {
+        return true;
+      }
+    }
   }
+  // Note: If Notion has no tags (null), we don't check Ecomail tags
+  // because addToEcomail() won't send tags field, so Ecomail tags won't change
 
   // Compare other fields - ONLY if Notion has non-null values
   // This matches the update logic which only sends non-null fields
