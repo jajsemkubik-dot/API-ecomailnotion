@@ -46,8 +46,78 @@ function normalizeEcomailStatus(status) {
   return status;
 }
 
-// Initialize Notion client
-const notion = new Client({ auth: NOTION_TOKEN });
+// Notion client will be initialized after validation in main()
+let notion;
+
+/**
+ * Delay utility for rate limiting
+ */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Fetch with timeout support
+ */
+async function fetchWithTimeout(url, options, timeout = 30000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeout}ms: ${url}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch with retry logic and exponential backoff
+ */
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, options);
+
+      // Handle rate limiting specially
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 2000;
+        console.log(`⏱️  Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+        await delay(waitTime);
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+
+      if (isLastAttempt) {
+        throw error;
+      }
+
+      // Exponential backoff: 1s, 2s, 4s
+      const waitTime = Math.pow(2, attempt) * 1000;
+      console.log(`⚠️  Request failed (${error.message}), retrying in ${waitTime}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await delay(waitTime);
+    }
+  }
+}
+
+/**
+ * Validate email format
+ */
+function isValidEmail(email) {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+}
 
 /**
  * Query Notion database for ALL contacts
@@ -105,7 +175,7 @@ function extractContactData(page) {
     name: properties.Jméno?.rich_text?.[0]?.plain_text || null,
     surname: properties.Příjmení?.rich_text?.[0]?.plain_text || null,
     company: properties.Firma?.rich_text?.[0]?.plain_text || null,
-    tags: tags.length > 0 ? tags : null,
+    tags: tags,  // Keep empty array to allow clearing tags
     subscribe: subscribe,
     subscribeRaw: subscribeValue  // Keep raw value for debugging
   };
@@ -117,7 +187,7 @@ function extractContactData(page) {
 async function fetchEcomailSubscriber(email) {
   const url = `https://api2.ecomailapp.cz/lists/${ECOMAIL_LIST_ID}/subscriber/${encodeURIComponent(email)}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'GET',
     headers: {
       'key': ECOMAIL_API_KEY,
@@ -130,8 +200,14 @@ async function fetchEcomailSubscriber(email) {
     return data;
   }
 
-  // Subscriber doesn't exist or error - return null
-  return null;
+  // 404 means subscriber doesn't exist - this is OK
+  if (response.status === 404) {
+    return null;
+  }
+
+  // Any other error is a real problem - throw so caller knows
+  const errorText = await response.text();
+  throw new Error(`Failed to fetch subscriber ${email}: ${response.status} ${response.statusText} - ${errorText}`);
 }
 
 /**
@@ -145,11 +221,11 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
     return true;
   }
 
-  // Compare tags - ONLY if Notion has tags to send
-  // This matches addToEcomail() which only sends tags if they exist
-  if (notionContact.tags && notionContact.tags.length > 0) {
-    const notionTags = notionContact.tags.sort();
-    const ecomailTags = (ecomailSubscriber.tags || []).sort();
+  // Compare tags - Always check if tags field exists (even if empty array)
+  // This allows clearing tags by setting empty array in Notion
+  if (notionContact.tags !== undefined) {
+    const notionTags = [...notionContact.tags].sort();  // Create copy to avoid mutation
+    const ecomailTags = [...(ecomailSubscriber.tags || [])].sort();
 
     if (notionTags.length !== ecomailTags.length) {
       return true;
@@ -161,8 +237,6 @@ function needsEcomailUpdate(notionContact, ecomailSubscriber) {
       }
     }
   }
-  // Note: If Notion has no tags (null), we don't check Ecomail tags
-  // because addToEcomail() won't send tags field, so Ecomail tags won't change
 
   // Compare other fields - ONLY if Notion has non-null values
   // This matches the update logic which only sends non-null fields
@@ -197,12 +271,13 @@ async function addToEcomail(contact) {
     skip_confirmation: true
   };
 
-  // Add tags if they exist (tags must be sent separately according to Ecomail API)
-  if (contact.tags && contact.tags.length > 0) {
+  // Always send tags (even empty array to allow clearing)
+  // Tags must be sent separately according to Ecomail API
+  if (contact.tags !== undefined) {
     payload.tags = contact.tags;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'POST',
     headers: {
       'key': ECOMAIL_API_KEY,
@@ -229,7 +304,7 @@ async function unsubscribeFromEcomail(email) {
     }
   };
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'PUT',
     headers: {
       'key': ECOMAIL_API_KEY,
@@ -262,12 +337,12 @@ async function updateUnsubscribedContact(contact) {
     subscriber_data
   };
 
-  // Add tags if they exist
-  if (contact.tags && contact.tags.length > 0) {
+  // Always send tags (even empty array to allow clearing)
+  if (contact.tags !== undefined) {
     payload.tags = contact.tags;
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'PUT',
     headers: {
       'key': ECOMAIL_API_KEY,
@@ -303,6 +378,9 @@ async function main() {
     process.exit(1);
   }
 
+  // Initialize Notion client after validation
+  notion = new Client({ auth: NOTION_TOKEN });
+
   try {
     // Query Notion for all contacts
     const pages = await queryNotionDatabase();
@@ -323,9 +401,9 @@ async function main() {
     for (const page of pages) {
       const contact = extractContactData(page);
 
-      // Skip if no email
-      if (!contact.email) {
-        console.log(`⚠️  Skipping contact without email`);
+      // Skip if no email or invalid email format
+      if (!contact.email || !isValidEmail(contact.email)) {
+        console.log(`⚠️  Skipping contact with invalid email: ${contact.email || '(empty)'}`);
         errorCount++;
         continue;
       }
@@ -399,6 +477,9 @@ async function main() {
         console.error(`❌ Error syncing ${contact.email}:`, error.message);
         errorCount++;
       }
+
+      // Rate limiting: delay between requests to avoid overwhelming API (100ms = max 10 req/sec)
+      await delay(100);
     }
 
     // Summary
