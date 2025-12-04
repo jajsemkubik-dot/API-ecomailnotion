@@ -29,7 +29,7 @@ This will show:
 
 ## Common Issues and Solutions
 
-### Issue 1: Subscribe Field Configuration
+### Issue 1: Marketingový status Field Configuration
 
 **Symptom**: Contacts not syncing or unsubscribe not working
 
@@ -38,21 +38,21 @@ This will show:
 node diagnose.mjs
 ```
 
-Look for the Subscribe property output. It should show:
+Look for the Marketingový status property output. It should show:
 
 ```json
 {
   "type": "select",
   "select": {
-    "name": "Yes"  // or "No"
+    "name": "Ano"  // or "Ne"
   }
 }
 ```
 
 **Fix if wrong**:
-- In Notion, the Subscribe field MUST be:
+- In Notion, the Marketingový status field MUST be:
   - Type: **Select** (NOT Checkbox)
-  - Options: Exactly `Yes` and `No` (case-sensitive)
+  - Options: Exactly `Ano` and `Ne` (case-sensitive)
   - Each contact must have a value selected (not empty)
 
 ### Issue 2: Environment Variables Not Set
@@ -80,21 +80,21 @@ The code now handles both formats:
 
 The `normalizeEcomailStatus()` function converts strings to numbers automatically.
 
-### Issue 4: Null Subscribe Values Cause Unsubscribe
+### Issue 4: Null Marketingový status Values Cause Unsubscribe
 
-**Symptom**: Contacts without Subscribe value get unsubscribed
+**Symptom**: Contacts without Marketingový status value get unsubscribed
 
-**Fix**: The code now skips contacts where Subscribe is not set:
+**Fix**: The code now skips contacts where Marketingový status is not set:
 
 ```javascript
 if (contact.subscribeRaw === null) {
-  console.log(`⚠️  Skipping ${contact.email}: Subscribe field not set`);
+  console.log(`⚠️  Skipping ${contact.email}: Marketingový status field not set`);
   skippedCount++;
   continue;
 }
 ```
 
-**Action**: Ensure all contacts have Subscribe set to either "Yes" or "No"
+**Action**: Ensure all contacts have Marketingový status set to either "Ano" or "Ne"
 
 ### Issue 5: Tags Not Syncing for Unsubscribed Contacts
 
@@ -113,8 +113,8 @@ node diagnose.mjs
 Save the output and check:
 - ✓ All environment variables are set
 - ✓ Notion connection succeeds
-- ✓ Subscribe field is **Select** type
-- ✓ Subscribe values are "Yes" and "No" (not true/false)
+- ✓ Marketingový status field is **Select** type
+- ✓ Marketingový status values are "Ano" and "Ne" (not true/false)
 - ✓ Ecomail connection succeeds
 - ✓ Status normalization tests pass
 
@@ -145,7 +145,7 @@ Watch for error messages and note which emails fail.
 
 Required properties in Notion:
 - **Email** (Email type) - Required for all contacts
-- **Subscribe** (Select type) - Options: "Yes", "No"
+- **Marketingový status** (Select type) - Options: "Ano", "Ne"
 - **Jméno** (Text type) - Optional
 - **Příjmení** (Text type) - Optional
 - **Firma** (Text type) - Optional
@@ -164,13 +164,13 @@ if (email === 'test@example.com') {
 
 ## Expected Sync Behavior
 
-### Subscribe = "Yes" (Notion)
+### Marketingový status = "Ano" (Notion)
 1. Checks if contact exists in Ecomail
 2. Checks if status = 1 (SUBSCRIBED) and all fields match
 3. If no changes: Skips with `⏭️  No changes: email`
 4. If changes: Updates with `✅ Subscribed: email`
 
-### Subscribe = "No" (Notion)
+### Marketingový status = "Ne" (Notion)
 1. Checks if contact exists in Ecomail
 2. If status = 2 (UNSUBSCRIBED):
    - Checks if tags/info need updating
@@ -179,8 +179,8 @@ if (email === 'test@example.com') {
 3. If status = 1 (SUBSCRIBED):
    - Unsubscribes: `✅ Unsubscribed: email`
 
-### Subscribe = null (Notion)
-- Skips: `⚠️  Skipping email: Subscribe field not set`
+### Marketingový status = null (Notion)
+- Skips: `⚠️  Skipping email: Marketingový status field not set`
 
 ## API Endpoints Used
 
@@ -210,7 +210,7 @@ If sync still fails after checking all above:
 1. **Get the exact error message** from GitHub Actions logs
 2. **Run diagnostic script** and save full output
 3. **Check one specific contact**:
-   - What is Subscribe value in Notion?
+   - What is Marketingový status value in Notion?
    - What is status in Ecomail?
    - Run sync and see what action it takes
 4. **Verify API credentials**:
@@ -237,5 +237,5 @@ Avoid these error indicators:
 ❌ Failed to subscribe email@example.com: 401 - Unauthorized
 ❌ Failed to unsubscribe email@example.com: 404 - Not Found
 ⚠️  Skipping contact without email
-⚠️  Skipping email@example.com: Subscribe field not set
+⚠️  Skipping email@example.com: Marketingový status field not set
 ```

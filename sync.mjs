@@ -83,9 +83,9 @@ function extractContactData(page) {
   // Extract tags from multiselect property
   const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
 
-  // Extract Subscribe field (Select type with "Yes" or "No" values)
-  const subscribeValue = properties.Subscribe?.select?.name || null;
-  const subscribe = subscribeValue === 'Yes';
+  // Extract Marketingový status field (Select type with "Ano" or "Ne" values)
+  const subscribeValue = properties['Marketingový status']?.select?.name || null;
+  const subscribe = subscribeValue === 'Ano';
 
   return {
     email: properties.Email?.email || null,
@@ -317,15 +317,15 @@ async function main() {
         const ecomailStatus = normalizeEcomailStatus(ecomailSubscriber?.status);
 
         // Handle subscription status based on Notion
-        // Only process if Subscribe field is explicitly set (not null/undefined)
+        // Only process if Marketingový status field is explicitly set (not null/undefined)
         if (contact.subscribeRaw === null) {
-          console.log(`⚠️  Skipping ${contact.email}: Subscribe field not set`);
+          console.log(`⚠️  Skipping ${contact.email}: Marketingový status field not set`);
           skippedCount++;
           continue;
         }
 
         if (contact.subscribe) {
-          // Contact should be subscribed in Ecomail (Subscribe = "Yes")
+          // Contact should be subscribed in Ecomail (Marketingový status = "Ano")
           if (ecomailStatus === ECOMAIL_STATUS.SUBSCRIBED && !needsEcomailUpdate(contact, ecomailSubscriber)) {
             console.log(`⏭️  No changes: ${contact.email}`);
             skippedCount++;
@@ -343,7 +343,7 @@ async function main() {
             errorCount++;
           }
         } else {
-          // Contact should be unsubscribed in Ecomail (Subscribe = "No")
+          // Contact should be unsubscribed in Ecomail (Marketingový status = "Ne")
           if (ecomailStatus === ECOMAIL_STATUS.UNSUBSCRIBED || ecomailStatus === 'NOT_FOUND') {
             // Already unsubscribed, but check if tags/info need updating
             if (ecomailStatus === ECOMAIL_STATUS.UNSUBSCRIBED && needsEcomailUpdate(contact, ecomailSubscriber)) {

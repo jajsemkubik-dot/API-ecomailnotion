@@ -72,22 +72,22 @@ try {
         console.log(`   ✗ Email property not found!`);
       }
 
-      // Show Subscribe field - THIS IS KEY
-      console.log(`\n✅ Subscribe Property:`);
-      if (properties.Subscribe) {
-        console.log(`   Type: ${properties.Subscribe.type}`);
-        console.log(`   Raw JSON:`, JSON.stringify(properties.Subscribe, null, 4));
+      // Show Marketingový status field - THIS IS KEY
+      console.log(`\n✅ Marketingový status Property:`);
+      if (properties['Marketingový status']) {
+        console.log(`   Type: ${properties['Marketingový status'].type}`);
+        console.log(`   Raw JSON:`, JSON.stringify(properties['Marketingový status'], null, 4));
 
-        if (properties.Subscribe.select) {
-          console.log(`   → select.name: "${properties.Subscribe.select.name}"`);
-          console.log(`   → Boolean conversion: ${properties.Subscribe.select.name === 'Yes'}`);
-        } else if (properties.Subscribe.checkbox !== undefined) {
-          console.log(`   → checkbox value: ${properties.Subscribe.checkbox}`);
+        if (properties['Marketingový status'].select) {
+          console.log(`   → select.name: "${properties['Marketingový status'].select.name}"`);
+          console.log(`   → Boolean conversion (Ano=true): ${properties['Marketingový status'].select.name === 'Ano'}`);
+        } else if (properties['Marketingový status'].checkbox !== undefined) {
+          console.log(`   → checkbox value: ${properties['Marketingový status'].checkbox}`);
         } else {
           console.log(`   ⚠️  Unexpected structure!`);
         }
       } else {
-        console.log(`   ✗ Subscribe property not found!`);
+        console.log(`   ✗ Marketingový status property not found!`);
         console.log(`   Available properties: ${Object.keys(properties).join(', ')}`);
       }
 
@@ -224,12 +224,12 @@ for (const test of testCases) {
 console.log('\n' + '='.repeat(60));
 console.log('✅ DIAGNOSTICS COMPLETE\n');
 console.log('📊 Summary:');
-console.log('   1. Check if Subscribe property exists and has correct type');
-console.log('   2. Check if Subscribe values are "Yes" and "No" (case-sensitive)');
+console.log('   1. Check if Marketingový status property exists and has correct type');
+console.log('   2. Check if Marketingový status values are "Ano" and "Ne" (case-sensitive)');
 console.log('   3. Check if Ecomail API returns string or numeric status');
 console.log('   4. Review the raw JSON structures above');
 console.log('\n💡 Next steps:');
-console.log('   - If Subscribe property is missing, add it to Notion database');
-console.log('   - If Subscribe type is wrong, change it to Select with "Yes"/"No" options');
+console.log('   - If Marketingový status property is missing, add it to Notion database');
+console.log('   - If type is wrong, change it to Select with "Ano"/"Ne" options');
 console.log('   - Share the output above for further debugging');
 console.log('');

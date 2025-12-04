@@ -8,9 +8,9 @@ Automatically sync contacts between Notion database and Ecomail mailing list usi
 - Syncs contact data from Notion to Ecomail:
   - Email, name, surname, company
   - **Tags** (bi-directional - checks for changes before updating)
-  - **Subscription status** - Controls Ecomail subscriptions based on "Subscribe" field
-- Subscribes contacts when "Subscribe" = "Yes"
-- Unsubscribes contacts when "Subscribe" = "No"
+  - **Subscription status** - Controls Ecomail subscriptions based on "Marketingový status" field
+- Subscribes contacts when "Marketingový status" = "Ano"
+- Unsubscribes contacts when "Marketingový status" = "Ne"
 - Fetches existing Ecomail data to detect changes
 - Only updates when changes are detected (efficient sync)
 - Updates existing subscribers or creates new ones in Ecomail
@@ -44,7 +44,7 @@ Your Notion database should have these properties:
 - **Jméno** (Text type) - First name
 - **Příjmení** (Text type) - Surname/Last name
 - **Firma** (Text type) - Company name
-- **Subscribe** (Select type) - Subscription status with two options: "Yes" (subscribed) and "No" (unsubscribed)
+- **Marketingový status** (Select type) - Subscription status with two options: "Ano" (subscribed) and "Ne" (unsubscribed)
 - **Tags** (Multi-select type, optional) - Contact tags
 
 ## Setup
@@ -133,8 +133,8 @@ npm run sync
 1. **Query Notion**: Fetches all contacts from the Notion database
 2. **Extract Data**: Extracts email, name, surname, company, tags, and subscription status from each contact
 3. **Sync to Ecomail**:
-   - If `Subscribe` = "Yes": Subscribes or updates the contact in Ecomail (sets `status=1`)
-   - If `Subscribe` = "No": Unsubscribes the contact from Ecomail (sets `status=2`)
+   - If `Marketingový status` = "Ano": Subscribes or updates the contact in Ecomail (sets `status=1`)
+   - If `Marketingový status` = "Ne": Unsubscribes the contact from Ecomail (sets `status=2`)
    - Uses Ecomail status codes: 1=subscribed, 2=unsubscribed, 4=hard bounce, 5=spam complaint, 6=unconfirmed
    - If contact exists: Updates their information
    - If contact is new: Adds them to the list
@@ -157,11 +157,11 @@ npm run sync
 
 ### Contacts not syncing?
 
-- Verify the "Subscribe" field is set to "Yes" for contacts you want to subscribe
-- Set "Subscribe" to "No" to unsubscribe contacts
+- Verify the "Marketingový status" field is set to "Ano" for contacts you want to subscribe
+- Set "Marketingový status" to "Ne" to unsubscribe contacts
 - Ensure the Email property is not empty
 - Check that property names match exactly (case-sensitive)
-- The Subscribe field must be a Select type with options "Yes" and "No"
+- The Marketingový status field must be a Select type with options "Ano" and "Ne"
 
 ## Customization
 

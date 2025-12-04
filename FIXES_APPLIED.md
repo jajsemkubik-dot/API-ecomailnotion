@@ -23,8 +23,8 @@ env:
 
 **Action Required**: Ensure credentials are added as **Secrets** (not Variables) in GitHub repository settings.
 
-### 2. Subscribe Field Type Change
-**Issue**: Changed from Checkbox to Select type
+### 2. Field Name and Type Change
+**Issue**: Changed from "Subscribe" Checkbox to "Marketingový status" Select type
 **Fix**: Updated `extractContactData()` function in `sync.mjs`
 
 **Before**:
@@ -34,18 +34,18 @@ const subscribe = properties.Subscribe?.checkbox || false;
 
 **After**:
 ```javascript
-const subscribeValue = properties.Subscribe?.select?.name || null;
-const subscribe = subscribeValue === 'Yes';
+const subscribeValue = properties['Marketingový status']?.select?.name || null;
+const subscribe = subscribeValue === 'Ano';
 ```
 
-### 3. Null Subscribe Field Handling
-**Issue**: Contacts without Subscribe value were treated as `false`, triggering unsubscribe
-**Impact**: Blank Subscribe fields caused unwanted unsubscribe actions
-**Fix**: Added explicit null check in main sync loop (lines 321-325)
+### 3. Null Field Handling
+**Issue**: Contacts without Marketingový status value were treated as `false`, triggering unsubscribe
+**Impact**: Blank fields caused unwanted unsubscribe actions
+**Fix**: Added explicit null check in main sync loop
 
 ```javascript
 if (contact.subscribeRaw === null) {
-  console.log(`⚠️  Skipping ${contact.email}: Subscribe field not set`);
+  console.log(`⚠️  Skipping ${contact.email}: Marketingový status field not set`);
   skippedCount++;
   continue;
 }
@@ -184,7 +184,7 @@ Added detailed sync summary showing:
 
 ### Notion Database
 - **Email** (Email type) - Required
-- **Subscribe** (Select type) - Options: "Yes", "No" (case-sensitive)
+- **Marketingový status** (Select type) - Options: "Ano", "Ne" (case-sensitive)
 - **Jméno** (Text type) - Optional
 - **Příjmení** (Text type) - Optional
 - **Firma** (Text type) - Optional
@@ -208,14 +208,14 @@ Added detailed sync summary showing:
 ## Testing Checklist
 
 - [ ] GitHub secrets are configured (Secrets, not Variables)
-- [ ] Subscribe field is Select type with "Yes"/"No" options
-- [ ] All contacts have Subscribe value set (not empty)
+- [ ] Marketingový status field is Select type with "Ano"/"Ne" options
+- [ ] All contacts have Marketingový status value set (not empty)
 - [ ] Run `node diagnose.mjs` locally
 - [ ] Run `npm run sync` locally and verify output
 - [ ] Trigger GitHub Action manually
 - [ ] Check GitHub Action logs for success
-- [ ] Verify a Subscribe="Yes" contact gets subscribed in Ecomail
-- [ ] Verify a Subscribe="No" contact gets unsubscribed in Ecomail
+- [ ] Verify a Marketingový status="Ano" contact gets subscribed in Ecomail
+- [ ] Verify a Marketingový status="Ne" contact gets unsubscribed in Ecomail
 - [ ] Verify tag changes sync for unsubscribed contacts
 
 ## Next Steps
